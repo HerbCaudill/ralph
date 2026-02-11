@@ -109,7 +109,6 @@ export async function waitForUrl(
  *   },
  *   env: {},
  *   waitForHealthz: false,
- *   stdio: "inherit",
  * }
  * ```
  */
@@ -124,7 +123,6 @@ export async function runDev(
     frontend,
     env: extraEnv = {},
     waitForHealthz = false,
-    stdio = "inherit",
   } = config
 
   // Run pre-build commands sequentially (topological dependency order)
@@ -171,12 +169,18 @@ export async function runDev(
     console.log(`[${label}] frontend → http://localhost:${ports._frontend}`)
   }
 
-  // Start services
+  // Start services. Pipe stderr so we can suppress pnpm's noisy error
+  // messages during shutdown (they report SIGINT/SIGTERM as failures).
   const processes = []
   for (const svc of services) {
     const [cmd, ...args] = svc.command.split(" ")
     const svcEnv = { ...baseEnv, ...(svc.env || {}) }
-    const proc = spawn(cmd, args, { stdio, env: svcEnv, detached: true })
+    const proc = spawn(cmd, args, {
+      stdio: ["ignore", "inherit", "pipe"],
+      env: svcEnv,
+      detached: true,
+    })
+    proc.stderr.pipe(process.stderr)
     processes.push({ name: svc.name, proc })
   }
 
@@ -207,7 +211,12 @@ export async function runDev(
       uiArgs.push(...frontend.extraArgs)
     }
     const frontendEnv = { ...baseEnv, ...(frontend.env || {}) }
-    const proc = spawn("pnpm", uiArgs, { stdio, env: frontendEnv, detached: true })
+    const proc = spawn("pnpm", uiArgs, {
+      stdio: ["ignore", "inherit", "pipe"],
+      env: frontendEnv,
+      detached: true,
+    })
+    proc.stderr.pipe(process.stderr)
     processes.push({ name: "frontend", proc })
   }
 
@@ -216,10 +225,16 @@ export async function runDev(
   const cleanup = () => {
     if (cleanedUp) return
     cleanedUp = true
+    // Disconnect stderr pipes first so pnpm's shutdown error messages
+    // (e.g. "Command failed with signal SIGINT") are discarded.
+    for (const { proc } of processes) {
+      if (proc.stderr) {
+        proc.stderr.unpipe(process.stderr)
+        proc.stderr.destroy()
+      }
+    }
     for (const { proc } of processes) {
       try {
-        // Kill the entire process group (negative PID) so pnpm's children
-        // (tsc, tsx, vite) also receive the signal cleanly.
         process.kill(-proc.pid, "SIGTERM")
       } catch {
         // Process may have already exited.
