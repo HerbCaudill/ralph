@@ -28,6 +28,9 @@ export type {
   MutationEvent,
 } from "./lib/bdTypes.js"
 
+/** Maximum concurrent daemon socket connections to avoid EPIPE from socket exhaustion. */
+const MAX_CONCURRENT_REQUESTS = 10
+
 /** Typed client for the beads issue tracker via daemon RPC. */
 export class BdProxy {
   private transport: DaemonTransport
@@ -68,16 +71,22 @@ export class BdProxy {
   /** Show details for one or more issues. */
   async show(ids: string | string[]): Promise<BdIssue[]> {
     const idList = Array.isArray(ids) ? ids : [ids]
-    const results = await Promise.all(idList.map(id => this.showOne(id)))
-    return results
+    return batched(idList, MAX_CONCURRENT_REQUESTS, id => this.showOne(id))
   }
 
   /** List issues enriched with parent and dependency fields. */
   async listWithParents(options: BdListOptions = {}): Promise<BdIssue[]> {
     const issues = await this.list(options)
     if (issues.length === 0) return issues
-    const ids = issues.map(issue => issue.id)
-    const detailedIssues = await this.show(ids)
+
+    // Only fetch details for issues that have dependencies or a parent
+    const idsNeedingDetail = issues
+      .filter(issue => (issue.dependency_count ?? 0) > 0 || (issue.dependent_count ?? 0) > 0)
+      .map(issue => issue.id)
+
+    if (idsNeedingDetail.length === 0) return issues
+
+    const detailedIssues = await this.show(idsNeedingDetail)
     const detailsMap = new Map<string, BdIssue>()
     for (const issue of detailedIssues) detailsMap.set(issue.id, issue)
 
@@ -118,28 +127,27 @@ export class BdProxy {
   /** Update an issue. */
   async update(ids: string | string[], options: BdUpdateOptions): Promise<BdIssue[]> {
     const idList = Array.isArray(ids) ? ids : [ids]
-    const results = await Promise.all(
-      idList.map(async id => {
-        const args: Record<string, unknown> = { id }
-        if (options.title) args.title = options.title
-        if (options.description) args.description = options.description
-        if (options.priority !== undefined) args.priority = options.priority
-        if (options.status) args.status = options.status
-        if (options.type) args.issue_type = options.type
-        if (options.assignee) args.assignee = options.assignee
-        if (options.parent !== undefined) args.parent = options.parent
-        if (options.addLabels?.length) args.add_labels = options.addLabels
-        if (options.removeLabels?.length) args.remove_labels = options.removeLabels
-        return (await this.send("update", args)) as BdIssue
-      }),
-    )
-    return results
+    return batched(idList, MAX_CONCURRENT_REQUESTS, async id => {
+      const args: Record<string, unknown> = { id }
+      if (options.title) args.title = options.title
+      if (options.description) args.description = options.description
+      if (options.priority !== undefined) args.priority = options.priority
+      if (options.status) args.status = options.status
+      if (options.type) args.issue_type = options.type
+      if (options.assignee) args.assignee = options.assignee
+      if (options.parent !== undefined) args.parent = options.parent
+      if (options.addLabels?.length) args.add_labels = options.addLabels
+      if (options.removeLabels?.length) args.remove_labels = options.removeLabels
+      return (await this.send("update", args)) as BdIssue
+    })
   }
 
   /** Delete one or more issues. */
   async delete(ids: string | string[]): Promise<void> {
     const idList = Array.isArray(ids) ? ids : [ids]
-    await Promise.all(idList.map(id => this.send("delete", { id, force: true })))
+    await batched(idList, MAX_CONCURRENT_REQUESTS, id =>
+      this.send("delete", { id, force: true }).then(() => {}),
+    )
   }
 
   /** Add a comment to an issue. */
@@ -199,6 +207,27 @@ export class BdProxy {
   private send(operation: string, args: Record<string, unknown>): Promise<unknown> {
     return this.transport.send(operation, args)
   }
+}
+
+/**
+ * Execute an async function for each item with bounded concurrency.
+ * Processes items in batches to avoid overwhelming the daemon socket.
+ */
+async function batched<T, R>(
+  /** Items to process. */
+  items: T[],
+  /** Maximum number of concurrent operations. */
+  concurrency: number,
+  /** Async function to apply to each item. */
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = []
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency)
+    const batchResults = await Promise.all(batch.map(fn))
+    results.push(...batchResults)
+  }
+  return results
 }
 
 /** Options for creating a BdProxy. */
