@@ -151,12 +151,18 @@ describe("TaskChatPanel", () => {
       expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
     })
 
-    it("renders new chat button with text", () => {
+    it("renders new chat button when there are events", () => {
       render(<TaskChatPanel {...defaultProps} />)
 
       const newChatButton = screen.getByLabelText("New chat")
       expect(newChatButton).toBeInTheDocument()
       expect(screen.getByText("New chat")).toBeInTheDocument()
+    })
+
+    it("hides new chat button when events are empty", () => {
+      render(<TaskChatPanel {...defaultProps} events={[]} />)
+
+      expect(screen.queryByLabelText("New chat")).not.toBeInTheDocument()
     })
 
     it("calls onNewSession when new chat button is clicked", () => {
