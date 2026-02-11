@@ -6,6 +6,7 @@ import {
   loadWorkspaceSession,
   saveWorkspaceState,
   loadWorkspaceState,
+  clearWorkspaceSession,
 } from "../lib/workspaceSessionStorage"
 import { extractTaskLifecycleEvent } from "../lib/extractTaskLifecycleEvent"
 import { normalizeEventId } from "../lib/normalizeEventId"
@@ -60,6 +61,10 @@ export function useRalphLoop(
         setControlState(data.state)
         // Persist control state to localStorage so it survives page reloads
         saveWorkspaceState(data.workspaceId, data.state)
+        // Clear session ID when transitioning to idle (session is complete)
+        if (data.state === "idle") {
+          clearWorkspaceSession(data.workspaceId)
+        }
         break
 
       case "event": {

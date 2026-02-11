@@ -569,6 +569,28 @@ describe("useRalphLoop", () => {
       expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
     })
 
+    it("should clear session ID from localStorage when transitioning to idle (r-3lq9v)", async () => {
+      // Pre-set both session ID and state
+      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
+      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
+
+      const { useRalphLoop } = await import("../useRalphLoop")
+      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+
+      // Simulate Ralph stopping (state changes to idle)
+      act(() => {
+        mockWorkerInstance.port.simulateMessage({
+          type: "state_change",
+          workspaceId: TEST_WORKSPACE_ID,
+          state: "idle",
+        })
+      })
+
+      // BOTH control state AND session ID should be cleared from localStorage
+      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBeNull()
+    })
+
     it("should restore controlState from localStorage on mount and send to worker", async () => {
       // Simulate a previous running state
       localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
