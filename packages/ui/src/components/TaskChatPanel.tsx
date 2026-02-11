@@ -38,12 +38,7 @@ export function TaskChatPanel({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          onClick={onNewSession}
-          disabled={isStreaming}
-          className="font-normal"
-          aria-label="New chat"
-        >
+        <Button onClick={onNewSession} className="font-normal" aria-label="New chat">
           <IconMessagePlus size={18} stroke={1.5} />
           New chat
         </Button>

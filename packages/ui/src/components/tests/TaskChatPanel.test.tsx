@@ -161,11 +161,20 @@ describe("TaskChatPanel", () => {
       expect(defaultProps.onNewSession).toHaveBeenCalledTimes(1)
     })
 
-    it("disables new chat button when streaming", () => {
+    it("keeps new chat button enabled when streaming", () => {
       render(<TaskChatPanel {...defaultProps} isStreaming={true} />)
 
       const newChatButton = screen.getByLabelText("New chat")
-      expect(newChatButton).toBeDisabled()
+      expect(newChatButton).not.toBeDisabled()
+    })
+
+    it("calls onNewSession when new chat button is clicked while streaming", () => {
+      render(<TaskChatPanel {...defaultProps} isStreaming={true} />)
+
+      const newChatButton = screen.getByLabelText("New chat")
+      fireEvent.click(newChatButton)
+
+      expect(defaultProps.onNewSession).toHaveBeenCalledTimes(1)
     })
 
     it("renders new chat button using Button component with default variant", () => {

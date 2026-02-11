@@ -200,6 +200,58 @@ describe("useAgentChat localStorage persistence", () => {
       expect(result.current.state.sessionId).toBeNull()
       expect(localStorage.getItem(SESSION_ID_KEY)).toBeNull()
     })
+
+    it("keeps a background streaming session restorable after starting a new chat", async () => {
+      localStorage.setItem(SESSION_ID_KEY, "streaming-session")
+
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        if (url === "/api/sessions/streaming-session") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              sessionId: "streaming-session",
+              status: "processing",
+              adapter: "claude",
+            }),
+          })
+        }
+        if (url === "/api/sessions" && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ sessionId: "new-session-123" }),
+          })
+        }
+        return Promise.resolve({ ok: false, json: async () => ({}) })
+      })
+
+      const { result } = renderUseAgentChat()
+
+      await act(async () => {
+        vi.advanceTimersByTime(1)
+        await Promise.resolve()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("streaming-session")
+      expect(result.current.state.isStreaming).toBe(true)
+
+      await act(async () => {
+        result.current.actions.newSession()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(result.current.state.sessionId).toBe("new-session-123")
+      expect(result.current.state.isStreaming).toBe(false)
+
+      await act(async () => {
+        await result.current.actions.restoreSession("streaming-session")
+      })
+
+      expect(result.current.state.sessionId).toBe("streaming-session")
+      expect(result.current.state.isStreaming).toBe(true)
+    })
   })
 
   // ── initSession restores streaming state and agent type ──────────────
