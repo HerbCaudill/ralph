@@ -497,10 +497,10 @@ describe("TaskCard", () => {
 
       const card = container.firstChild as HTMLElement
       // Check that the accent color is used
-      // Background: #ff5500 with 1A (10%) opacity
-      expect(card.style.backgroundColor).toMatch(/rgba\(255,\s*85,\s*0,\s*0\.1\)|#ff55001a/i)
-      // Box shadow uses accent color with 80 suffix (50% opacity)
-      expect(card.style.boxShadow).toContain("#ff550080")
+      // Background: #ff5500 with 33 (20%) opacity
+      expect(card.style.backgroundColor).toMatch(/rgba\(255,\s*85,\s*0,\s*0\.2\)|#ff550033/i)
+      // Box shadow uses accent color with B3 suffix (70% opacity)
+      expect(card.style.boxShadow).toContain("#ff5500b3")
     })
 
     it("uses default color for selection when accent color is null", () => {
@@ -509,10 +509,10 @@ describe("TaskCard", () => {
 
       const card = container.firstChild as HTMLElement
       // DEFAULT_ACCENT_COLOR is #374151 (gray-700)
-      // Background: #374151 with 1A (10%) opacity
-      expect(card.style.backgroundColor).toMatch(/rgba\(55,\s*65,\s*81,\s*0\.1\)|#3741511a/i)
-      // Box shadow uses default color with 80 suffix (50% opacity)
-      expect(card.style.boxShadow).toContain("#37415180")
+      // Background: #374151 with 33 (20%) opacity
+      expect(card.style.backgroundColor).toMatch(/rgba\(55,\s*65,\s*81,\s*0\.2\)|#37415133/i)
+      // Box shadow uses default color with B3 suffix (70% opacity)
+      expect(card.style.boxShadow).toContain("#374151b3")
     })
   })
 })
