@@ -5,30 +5,38 @@ import path from "node:path"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
-import { BdProxy } from "./BdProxy.js"
+import {
+  BeadsClient,
+  DaemonTransport,
+  watchMutations,
+  getAliveWorkspaces,
+  batched,
+  MAX_CONCURRENT_REQUESTS,
+  type MutationEvent,
+  type Issue,
+} from "@herbcaudill/beads-sdk"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
-import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
 import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
-import { watchMutations } from "./BeadsClient.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
 import {
   parseThemeObject,
   mapThemeToCSSVariables,
   createAppTheme,
 } from "@herbcaudill/agent-view-theme"
-import type { MutationEvent } from "./lib/bdTypes.js"
 import { WorkspaceNotFoundError, type BeadsServerConfig, type WsClient } from "./types.js"
 
 export type { BeadsServerConfig, WsClient } from "./types.js"
-export type { RegistryEntry, WorkspaceInfo } from "./types.js"
+export type { RegistryEntry, WorkspaceInfo } from "@herbcaudill/beads-sdk"
 export { WorkspaceNotFoundError } from "./types.js"
-export { BdProxy } from "./BdProxy.js"
-export { BeadsClient, watchMutations } from "./BeadsClient.js"
-export { getAliveWorkspaces } from "./getAliveWorkspaces.js"
-export { getAvailableWorkspaces } from "./getAvailableWorkspaces.js"
-export { readRegistry } from "./readRegistry.js"
-export { getRegistryPath } from "./getRegistryPath.js"
-export { isProcessRunning } from "./isProcessRunning.js"
+export {
+  BeadsClient,
+  watchMutations,
+  getAliveWorkspaces,
+  getAvailableWorkspaces,
+  readRegistry,
+  getRegistryPath,
+  isProcessRunning,
+} from "@herbcaudill/beads-sdk"
 export { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 
 const execFileAsync = promisify(execFile)
@@ -73,13 +81,209 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
   }
 }
 
-/** Create a BdProxy for the given workspace identifier (path or owner/repo). */
-function getBdProxy(workspace: string): BdProxy {
+/**
+ * Get a BdProxy-compatible object backed by the SDK's BeadsClient.
+ * This adapter bridges the BeadsClient API to what task routes expect.
+ */
+function getBdProxy(workspace: string) {
   const resolved = resolveWorkspacePath(workspace)
   if (!resolved) {
     throw new WorkspaceNotFoundError(workspace)
   }
-  return new BdProxy({ cwd: resolved })
+
+  // Use DaemonTransport directly for synchronous per-request usage
+  // (BeadsClient requires async connect, but BdProxy was sync)
+  const transport = new DaemonTransport(resolved, { actor: "beads-server" })
+
+  return {
+    async list(
+      options: {
+        limit?: number
+        status?: string
+        priority?: number
+        type?: string
+        assignee?: string
+        parent?: string
+        ready?: boolean
+        all?: boolean
+      } = {},
+    ): Promise<Issue[]> {
+      const args: Record<string, unknown> = {}
+      if (options.limit) args.limit = options.limit
+      if (options.status) args.status = options.status
+      if (options.priority !== undefined) args.priority = options.priority
+      if (options.type) args.issue_type = options.type
+      if (options.assignee) args.assignee = options.assignee
+      if (options.parent) args.parent = options.parent
+      if (options.ready) args.ready = true
+      if (options.all) args.all = true
+      return (await transport.send("list", args)) as Issue[]
+    },
+
+    async blocked(parent?: string): Promise<Issue[]> {
+      const args: Record<string, unknown> = {}
+      if (parent) args.parent_id = parent
+      return (await transport.send("blocked", args)) as Issue[]
+    },
+
+    async showOne(id: string): Promise<Issue> {
+      return (await transport.send("show", { id })) as Issue
+    },
+
+    async show(ids: string | string[]): Promise<Issue[]> {
+      const idList = Array.isArray(ids) ? ids : [ids]
+      return batched(
+        idList,
+        MAX_CONCURRENT_REQUESTS,
+        async (id: string) => (await transport.send("show", { id })) as Issue,
+      )
+    },
+
+    async listWithParents(
+      options: {
+        status?: string
+        ready?: boolean
+        all?: boolean
+        limit?: number
+      } = {},
+    ): Promise<Issue[]> {
+      const issues = await this.list(options)
+      if (issues.length === 0) return issues
+
+      const idsNeedingDetail = issues
+        .filter(
+          (issue: Issue) => (issue.dependency_count ?? 0) > 0 || (issue.dependent_count ?? 0) > 0,
+        )
+        .map((issue: Issue) => issue.id)
+
+      if (idsNeedingDetail.length === 0) return issues
+
+      const detailedIssues = await this.show(idsNeedingDetail)
+      const detailsMap = new Map<string, Issue>()
+      for (const issue of detailedIssues) detailsMap.set(issue.id, issue)
+
+      return issues.map((issue: Issue) => {
+        const details = detailsMap.get(issue.id)
+        if (!details) return issue
+        const enriched: any = { ...issue }
+        if (details.parent) enriched.parent = details.parent
+        if (details.dependencies) {
+          enriched.dependencies = details.dependencies
+          const blockers = details.dependencies.filter(
+            (dep: any) => dep.dependency_type === "blocks" && dep.status !== "closed",
+          )
+          if (blockers.length > 0) {
+            enriched.blocked_by_count = blockers.length
+            enriched.blocked_by = blockers.map((b: any) => b.id)
+            if (enriched.status === "open") {
+              enriched.status = "blocked"
+            }
+          }
+        }
+        return enriched
+      })
+    },
+
+    async create(options: {
+      title: string
+      description?: string
+      priority?: number
+      type?: string
+      assignee?: string
+      parent?: string
+      labels?: string[]
+    }): Promise<Issue> {
+      const args: Record<string, unknown> = { title: options.title }
+      if (options.description) args.description = options.description
+      if (options.priority !== undefined) args.priority = options.priority
+      if (options.type) args.issue_type = options.type
+      if (options.assignee) args.assignee = options.assignee
+      if (options.parent) args.parent = options.parent
+      if (options.labels?.length) args.labels = options.labels
+      return (await transport.send("create", args)) as Issue
+    },
+
+    async update(
+      ids: string | string[],
+      options: {
+        title?: string
+        description?: string
+        priority?: number
+        status?: string
+        type?: string
+        assignee?: string
+        parent?: string
+        addLabels?: string[]
+        removeLabels?: string[]
+      },
+    ): Promise<Issue[]> {
+      const idList = Array.isArray(ids) ? ids : [ids]
+      return batched(idList, MAX_CONCURRENT_REQUESTS, async (id: string) => {
+        const args: Record<string, unknown> = { id }
+        if (options.title) args.title = options.title
+        if (options.description) args.description = options.description
+        if (options.priority !== undefined) args.priority = options.priority
+        if (options.status) args.status = options.status
+        if (options.type) args.issue_type = options.type
+        if (options.assignee) args.assignee = options.assignee
+        if (options.parent !== undefined) args.parent = options.parent
+        if (options.addLabels?.length) args.add_labels = options.addLabels
+        if (options.removeLabels?.length) args.remove_labels = options.removeLabels
+        return (await transport.send("update", args)) as Issue
+      })
+    },
+
+    async delete(ids: string | string[]): Promise<void> {
+      const idList = Array.isArray(ids) ? ids : [ids]
+      await batched(idList, MAX_CONCURRENT_REQUESTS, async (id: string) => {
+        await transport.send("delete", { id, force: true })
+      })
+    },
+
+    async addComment(id: string, comment: string, author?: string): Promise<void> {
+      const args: Record<string, unknown> = { id, text: comment }
+      if (author) args.author = author
+      await transport.send("comment_add", args)
+    },
+
+    async getComments(id: string): Promise<unknown[]> {
+      return (await transport.send("comments", { id })) as unknown[]
+    },
+
+    async getInfo(): Promise<unknown> {
+      return await transport.send("info", {})
+    },
+
+    async getLabels(id: string): Promise<string[]> {
+      return (await transport.send("label_list", { id })) as string[]
+    },
+
+    async addLabel(id: string, label: string): Promise<unknown> {
+      return await transport.send("label_add", { id, label })
+    },
+
+    async removeLabel(id: string, label: string): Promise<unknown> {
+      return await transport.send("label_remove", { id, label })
+    },
+
+    async listAllLabels(): Promise<string[]> {
+      return (await transport.send("label_list_all", {})) as string[]
+    },
+
+    async addBlocker(blockedId: string, blockerId: string): Promise<unknown> {
+      return await transport.send("dep_add", {
+        from_id: blockedId,
+        to_id: blockerId,
+      })
+    },
+
+    async removeBlocker(blockedId: string, blockerId: string): Promise<unknown> {
+      return await transport.send("dep_remove", {
+        from_id: blockedId,
+        to_id: blockerId,
+      })
+    },
+  }
 }
 
 // Mutation polling
@@ -251,7 +455,11 @@ function createApp(_config: BeadsServerConfig): Express {
       }
 
       const proxy = getBdProxy(workspacePath)
-      const info = await proxy.getInfo()
+      const info = (await proxy.getInfo()) as {
+        daemon_connected: boolean
+        daemon_status?: string
+        config?: Record<string, string>
+      }
 
       // Read peacock accent color and git branch in parallel
       const [accentColor, branch] = await Promise.all([

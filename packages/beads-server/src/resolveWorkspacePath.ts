@@ -1,4 +1,4 @@
-import { getAliveWorkspaces } from "./getAliveWorkspaces.js"
+import { getAliveWorkspaces } from "@herbcaudill/beads-sdk"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 
 /**

@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { resolveWorkspacePath } from "../resolveWorkspacePath.js"
-import * as getAliveWorkspacesModule from "../getAliveWorkspaces.js"
+import * as beadsSdk from "@herbcaudill/beads-sdk"
 
-// Mock getAliveWorkspaces
-vi.mock("../getAliveWorkspaces.js", () => ({
-  getAliveWorkspaces: vi.fn(),
-}))
+// Mock getAliveWorkspaces from the SDK
+vi.mock("@herbcaudill/beads-sdk", async importOriginal => {
+  const original = (await importOriginal()) as typeof beadsSdk
+  return {
+    ...original,
+    getAliveWorkspaces: vi.fn(),
+  }
+})
 
-const mockGetAliveWorkspaces = vi.mocked(getAliveWorkspacesModule.getAliveWorkspaces)
+const mockGetAliveWorkspaces = vi.mocked(beadsSdk.getAliveWorkspaces)
 
 describe("resolveWorkspacePath", () => {
   beforeEach(() => {
@@ -87,8 +91,6 @@ describe("resolveWorkspacePath", () => {
     })
 
     it("resolves worktree paths when workspace is alive", () => {
-      // Worktree paths like .ralph-worktrees/feature-abc123 won't match
-      // owner/repo format when extracted from path alone
       mockGetAliveWorkspaces.mockReturnValue([
         {
           path: "/Users/herbcaudill/.ralph-worktrees/feature-abc123",
@@ -100,8 +102,6 @@ describe("resolveWorkspacePath", () => {
         },
       ])
 
-      // This will fail because the worktree path extracts as
-      // ".ralph-worktrees/feature-abc123" not "herbcaudill/ralph"
       const result = resolveWorkspacePath("herbcaudill/ralph")
       expect(result).toBeNull()
     })

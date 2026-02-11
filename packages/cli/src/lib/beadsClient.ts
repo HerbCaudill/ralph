@@ -2,16 +2,9 @@
  * Beads SDK wrappers for the CLI.
  * Implements new-issue detection by polling the issue list and diffing.
  */
-import { BeadsClient } from "@herbcaudill/beads-sdk"
+import { BeadsClient, type MutationEvent } from "@herbcaudill/beads-sdk"
 
-export { BeadsClient } from "@herbcaudill/beads-sdk"
-
-/** Minimal mutation event shape consumed by SessionRunner. */
-export interface MutationEvent {
-  Type: "create"
-  IssueID: string
-  Title: string
-}
+export { BeadsClient, type MutationEvent } from "@herbcaudill/beads-sdk"
 
 /**
  * Poll for new issue creation events.
@@ -53,6 +46,7 @@ export function watchForNewIssues(
             Type: "create",
             IssueID: issue.id,
             Title: issue.title,
+            Timestamp: new Date().toISOString(),
           })
         }
       }
