@@ -3,9 +3,8 @@ import { WorkerLoop, type WorkerLoopOptions, type WorkerLoopEvents } from "../Wo
 import { WorktreeManager } from "../WorktreeManager.js"
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { spawn, type ChildProcess } from "node:child_process"
+import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
-import { EventEmitter } from "node:events"
 
 /**
  * Run a git command in the specified directory and return its stdout.
@@ -45,47 +44,27 @@ function git(
 }
 
 /**
- * Mock function for spawning Claude CLI process.
- * Returns a mock ChildProcess that immediately completes successfully.
+ * Create a mock runAgent callback that simulates agent work.
+ * The optional `doWork` callback receives the cwd and can make git changes.
  */
-function createMockClaudeProcess(options: {
+function createMockRunAgent(options?: {
   exitCode?: number
-  stdout?: string[]
-  onStdout?: (callback: (chunk: Buffer) => void) => void
-}): ChildProcess {
-  const proc = new EventEmitter() as unknown as ChildProcess
-  const stdout = new EventEmitter()
-  const stderr = new EventEmitter()
-
-  // @ts-expect-error - mocking ChildProcess
-  proc.stdout = stdout
-  // @ts-expect-error - mocking ChildProcess
-  proc.stderr = stderr
-  // @ts-expect-error - mocking ChildProcess
-  proc.pid = 12345
-  // @ts-expect-error - mocking ChildProcess
-  proc.killed = false
-  // @ts-expect-error - mocking ChildProcess
-  proc.kill = () => {
-    // @ts-expect-error - mocking ChildProcess
-    proc.killed = true
-    proc.emit("close", 0)
-    return true
-  }
-
-  // Schedule stdout chunks and exit
-  setTimeout(() => {
-    if (options.onStdout) {
-      options.onStdout(chunk => stdout.emit("data", chunk))
-    } else if (options.stdout) {
-      for (const line of options.stdout) {
-        stdout.emit("data", Buffer.from(line + "\n"))
-      }
+  sessionId?: string
+  doWork?: (cwd: string) => Promise<void>
+}): (
+  cwd: string,
+  taskId: string,
+  taskTitle: string,
+) => Promise<{ exitCode: number; sessionId: string }> {
+  return async (cwd, _taskId, _taskTitle) => {
+    if (options?.doWork) {
+      await options.doWork(cwd)
     }
-    proc.emit("close", options.exitCode ?? 0)
-  }, 10)
-
-  return proc
+    return {
+      exitCode: options?.exitCode ?? 0,
+      sessionId: options?.sessionId ?? "test-session-" + Math.random().toString(36).slice(2),
+    }
+  }
 }
 
 describe("WorkerLoop", () => {
@@ -138,7 +117,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -154,7 +133,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -175,13 +154,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () =>
-          createMockClaudeProcess({
-            stdout: [
-              JSON.stringify({ type: "assistant", message: { content: "Working..." } }),
-              JSON.stringify({ type: "result", result: "Done" }),
-            ],
-          }),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => ({ id: "bd-abc123", title: "Test task" }),
         claimTask: async taskId => {
           claimedTasks.push(taskId)
@@ -208,19 +181,14 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          worktreePath = cwd
-          // Make a change in the worktree
-          return createMockClaudeProcess({
-            onStdout: async emit => {
-              // Simulate Claude making a change
-              await writeFile(join(cwd, "new-file.txt"), "created by claude")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Add new file"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            worktreePath = cwd
+            await writeFile(join(cwd, "new-file.txt"), "created by claude")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", "Add new file"])
+          },
+        }),
         getReadyTask: async () => ({ id: "bd-abc123", title: "Test task" }),
         claimTask: async () => {},
         closeTask: async () => {},
@@ -244,20 +212,22 @@ describe("WorkerLoop", () => {
     // WorkerLoop delegates to WorktreeManager for all git operations.
   })
 
-  describe("Claude process handling", () => {
-    it("passes correct working directory to spawnClaude", async () => {
+  describe("runAgent handling", () => {
+    it("passes correct cwd, taskId, and taskTitle to runAgent", async () => {
       let receivedCwd: string | undefined
+      let receivedTaskId: string | undefined
+      let receivedTaskTitle: string | undefined
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
+        runAgent: async (cwd, taskId, taskTitle) => {
           receivedCwd = cwd
-          return createMockClaudeProcess({
-            stdout: [JSON.stringify({ type: "result", result: "Done" })],
-          })
+          receivedTaskId = taskId
+          receivedTaskTitle = taskTitle
+          return { exitCode: 0, sessionId: "test-session" }
         },
-        getReadyTask: async () => ({ id: "bd-task-xyz", title: "Test" }),
+        getReadyTask: async () => ({ id: "bd-task-xyz", title: "Fix the bug" }),
         claimTask: async () => {},
         closeTask: async () => {},
       })
@@ -265,19 +235,17 @@ describe("WorkerLoop", () => {
       await loop.runOnce()
 
       expect(receivedCwd).toBe(worktreeManager.getWorktreePath("homer", "bd-task-xyz"))
+      expect(receivedTaskId).toBe("bd-task-xyz")
+      expect(receivedTaskTitle).toBe("Fix the bug")
     })
 
-    it("handles Claude process error gracefully", async () => {
+    it("handles non-zero exit code gracefully", async () => {
       const errors: Error[] = []
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () =>
-          createMockClaudeProcess({
-            exitCode: 1,
-            stdout: [JSON.stringify({ type: "error", message: "Something went wrong" })],
-          }),
+        runAgent: createMockRunAgent({ exitCode: 1 }),
         getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
         claimTask: async () => {},
         closeTask: async () => {},
@@ -289,6 +257,50 @@ describe("WorkerLoop", () => {
 
       expect(errors.length).toBeGreaterThan(0)
     })
+
+    it("emits claude_started with sessionId", async () => {
+      const events: Array<{ taskId: string; sessionId: string }> = []
+
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        runAgent: createMockRunAgent({ sessionId: "session-abc-123" }),
+        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      loop.on("claude_started", data => events.push(data))
+
+      await loop.runOnce()
+
+      expect(events.length).toBe(1)
+      expect(events[0].taskId).toBe("bd-abc123")
+      // sessionId should be present (not pid)
+      expect(events[0].sessionId).toBeDefined()
+    })
+
+    it("emits claude_completed with sessionId and exitCode", async () => {
+      const events: Array<{ taskId: string; exitCode: number; sessionId: string }> = []
+
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        runAgent: createMockRunAgent({ exitCode: 0, sessionId: "session-abc-123" }),
+        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
+        claimTask: async () => {},
+        closeTask: async () => {},
+      })
+
+      loop.on("claude_completed", data => events.push(data))
+
+      await loop.runOnce()
+
+      expect(events.length).toBe(1)
+      expect(events[0].taskId).toBe("bd-abc123")
+      expect(events[0].exitCode).toBe(0)
+      expect(events[0].sessionId).toBe("session-abc-123")
+    })
   })
 
   describe("event emission", () => {
@@ -298,16 +310,13 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            await writeFile(join(cwd, "work.txt"), "done")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", "Work done"])
+          },
+        }),
         getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
         claimTask: async () => {},
         closeTask: async () => {},
@@ -340,16 +349,13 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, "work.txt"), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            await writeFile(join(cwd, "work.txt"), "done")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", "Work done"])
+          },
+        }),
         getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
         claimTask: async () => {},
         closeTask: async () => {},
@@ -371,16 +377,13 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, `work-${testAttempts}.txt`), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", "Work done"])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            await writeFile(join(cwd, `work-${testAttempts}.txt`), "done")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", "Work done"])
+          },
+        }),
         getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
         claimTask: async () => {},
         closeTask: async () => {},
@@ -411,16 +414,13 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, `work-${taskCount}.txt`), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", `Work ${taskCount} done`])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            await writeFile(join(cwd, `work-${taskCount}.txt`), "done")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", `Work ${taskCount} done`])
+          },
+        }),
         getReadyTask: async () => {
           if (taskCount >= maxTasks) return null
           taskCount++
@@ -444,16 +444,13 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async emit => {
-              await writeFile(join(cwd, `work-${taskCount}.txt`), "done")
-              await git(cwd, ["add", "."])
-              await git(cwd, ["commit", "-m", `Work done`])
-              emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            await writeFile(join(cwd, `work-${taskCount}.txt`), "done")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", `Work done`])
+          },
+        }),
         getReadyTask: async () => {
           taskCount++
           if (taskCount >= 2) {
@@ -484,7 +481,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -502,7 +499,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -521,7 +518,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -541,7 +538,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -559,7 +556,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},
@@ -577,7 +574,7 @@ describe("WorkerLoop", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent: createMockRunAgent(),
         getReadyTask: async () => null,
         claimTask: async () => {},
         closeTask: async () => {},

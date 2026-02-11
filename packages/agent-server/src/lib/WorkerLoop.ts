@@ -1,5 +1,4 @@
 import { EventEmitter } from "node:events"
-import type { ChildProcess } from "node:child_process"
 import { WorktreeManager, type CleanupResult } from "./WorktreeManager.js"
 
 /**
@@ -29,6 +28,14 @@ export interface MergeConflictContext {
 }
 
 /**
+ * Result of running an agent session.
+ */
+export interface RunAgentResult {
+  exitCode: number
+  sessionId: string
+}
+
+/**
  * Options for creating a WorkerLoop instance.
  */
 export interface WorkerLoopOptions {
@@ -39,11 +46,11 @@ export interface WorkerLoopOptions {
   mainWorkspacePath: string
 
   /**
-   * Function to spawn a Claude CLI process.
-   * Receives the working directory (worktree path) where Claude should run.
-   * Should return a ChildProcess.
+   * Function to run an agent session.
+   * Receives the working directory, task ID, and task title.
+   * Returns a promise with the exit code and session ID.
    */
-  spawnClaude: (cwd: string) => ChildProcess
+  runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
 
   /**
    * Function to get the next ready task for this worker.
@@ -72,8 +79,8 @@ export interface WorkerLoopOptions {
    * The callback should resolve the conflict and return "resolved" to retry,
    * or "abort" to give up on this task.
    *
-   * If not provided, merge conflicts are retried by re-running Claude
-   * in the worktree to let the agent resolve the conflict.
+   * If not provided, merge conflicts are retried by re-running the agent
+   * in the worktree to let it resolve the conflict.
    */
   onMergeConflict?: (context: MergeConflictContext) => Promise<"resolved" | "abort">
 }
@@ -96,11 +103,11 @@ export interface WorkerLoopEvents {
   /** Emitted when a worktree is created for a task */
   worktree_created: [{ taskId: string; worktreePath: string }]
 
-  /** Emitted when Claude process starts */
-  claude_started: [{ taskId: string; pid: number }]
+  /** Emitted when an agent session starts */
+  claude_started: [{ taskId: string; sessionId: string }]
 
-  /** Emitted when Claude process completes */
-  claude_completed: [{ taskId: string; exitCode: number }]
+  /** Emitted when an agent session completes */
+  claude_completed: [{ taskId: string; exitCode: number; sessionId: string }]
 
   /** Emitted when merge completes successfully */
   merge_completed: [{ taskId: string }]
@@ -131,7 +138,7 @@ export interface WorkerLoopEvents {
  * The core worker loop that:
  * 1. Pulls latest main
  * 2. Creates a worktree with a task-specific branch
- * 3. Spawns Claude CLI in the worktree
+ * 3. Runs an agent session in the worktree
  * 4. On completion, merges branch into main
  * 5. Resolves any merge conflicts via the agent
  * 6. Runs tests to verify clean merge
@@ -144,7 +151,7 @@ export class WorkerLoop extends EventEmitter {
   private workerName: string
   private mainWorkspacePath: string
   private worktreeManager: WorktreeManager
-  private spawnClaude: (cwd: string) => ChildProcess
+  private runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
   private getReadyTask: () => Promise<ReadyTask | null>
   private claimTask: (taskId: string) => Promise<void>
   private closeTask: (taskId: string) => Promise<void>
@@ -153,7 +160,6 @@ export class WorkerLoop extends EventEmitter {
   private stopped = false
   private paused = false
   private pauseResolver: (() => void) | null = null
-  private currentProcess: ChildProcess | null = null
   private currentTaskId: string | null = null
   private state: WorkerState = "idle"
 
@@ -162,7 +168,7 @@ export class WorkerLoop extends EventEmitter {
     this.workerName = options.workerName
     this.mainWorkspacePath = options.mainWorkspacePath
     this.worktreeManager = new WorktreeManager(options.mainWorkspacePath)
-    this.spawnClaude = options.spawnClaude
+    this.runAgent = options.runAgent
     this.getReadyTask = options.getReadyTask
     this.claimTask = options.claimTask
     this.closeTask = options.closeTask
@@ -236,8 +242,8 @@ export class WorkerLoop extends EventEmitter {
       })
       this.emit("worktree_created", { taskId: task.id, worktreePath: worktree.path })
 
-      // 5. Spawn Claude CLI in the worktree
-      await this.runClaudeWithRetry(task.id, worktree.path)
+      // 5. Run agent in the worktree
+      await this.runAgentWithRetry(task.id, task.title, worktree.path)
 
       // 6. Complete the task
       await this.closeTask(task.id)
@@ -253,19 +259,32 @@ export class WorkerLoop extends EventEmitter {
   }
 
   /**
-   * Run Claude and handle merge/test failures with retry.
+   * Run the agent and handle merge/test failures with retry.
    * Worker never gives up - keeps retrying until successful.
    */
-  private async runClaudeWithRetry(taskId: string, worktreePath: string): Promise<void> {
+  private async runAgentWithRetry(
+    /** The task ID */
+    taskId: string,
+    /** The task title */
+    taskTitle: string,
+    /** The worktree path where the agent runs */
+    worktreePath: string,
+  ): Promise<void> {
     let success = false
 
     while (!success && !this.stopped) {
-      // Spawn Claude
-      const exitCode = await this.spawnClaudeProcess(taskId, worktreePath)
+      // Run the agent session
+      this.emit("claude_started", { taskId, sessionId: "" })
+      const result = await this.runAgent(worktreePath, taskId, taskTitle)
+      this.emit("claude_completed", {
+        taskId,
+        exitCode: result.exitCode,
+        sessionId: result.sessionId,
+      })
 
-      if (exitCode !== 0) {
-        this.emit("error", new Error(`Claude exited with code ${exitCode}`))
-        // Continue to try merge anyway - Claude may have made useful changes
+      if (result.exitCode !== 0) {
+        this.emit("error", new Error(`Agent exited with code ${result.exitCode}`))
+        // Continue to try merge anyway - agent may have made useful changes
       }
 
       // Attempt to merge
@@ -297,7 +316,7 @@ export class WorkerLoop extends EventEmitter {
           await this.worktreeManager.abortMerge()
           continue // Retry the loop
         } else {
-          // Default behavior: abort merge and let Claude try again
+          // Default behavior: abort merge and let agent try again
           await this.worktreeManager.abortMerge()
           continue // Retry the loop
         }
@@ -316,7 +335,7 @@ export class WorkerLoop extends EventEmitter {
 
         if (!testResult.success) {
           this.emit("tests_failed", testResult)
-          // Tests failed - need to revert merge and let Claude fix
+          // Tests failed - need to revert merge and let agent fix
           // For now, we continue anyway (TODO: implement proper revert)
           continue
         }
@@ -332,31 +351,6 @@ export class WorkerLoop extends EventEmitter {
   }
 
   /**
-   * Spawn Claude CLI process and wait for completion.
-   * Returns the exit code.
-   */
-  private async spawnClaudeProcess(taskId: string, worktreePath: string): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const proc = this.spawnClaude(worktreePath)
-      this.currentProcess = proc
-
-      this.emit("claude_started", { taskId, pid: proc.pid ?? 0 })
-
-      proc.on("close", code => {
-        this.currentProcess = null
-        const exitCode = code ?? 0
-        this.emit("claude_completed", { taskId, exitCode })
-        resolve(exitCode)
-      })
-
-      proc.on("error", error => {
-        this.currentProcess = null
-        reject(error)
-      })
-    })
-  }
-
-  /**
    * Stop the loop after the current task completes.
    */
   stop(): void {
@@ -364,18 +358,15 @@ export class WorkerLoop extends EventEmitter {
   }
 
   /**
-   * Force stop by killing the current Claude process.
+   * Force stop the worker loop immediately.
    */
   forceStop(): void {
     this.stopped = true
-    if (this.currentProcess) {
-      this.currentProcess.kill()
-    }
   }
 
   /**
-   * Pause the worker loop. The worker will complete the current Claude process
-   * step but will wait before continuing to the next step or task.
+   * Pause the worker loop. The worker will complete the current agent session
+   * but will wait before continuing to the next step or task.
    */
   pause(): void {
     if (this.paused) return
