@@ -176,7 +176,7 @@ export async function runDev(
   for (const svc of services) {
     const [cmd, ...args] = svc.command.split(" ")
     const svcEnv = { ...baseEnv, ...(svc.env || {}) }
-    const proc = spawn(cmd, args, { stdio, env: svcEnv })
+    const proc = spawn(cmd, args, { stdio, env: svcEnv, detached: true })
     processes.push({ name: svc.name, proc })
   }
 
@@ -207,7 +207,7 @@ export async function runDev(
       uiArgs.push(...frontend.extraArgs)
     }
     const frontendEnv = { ...baseEnv, ...(frontend.env || {}) }
-    const proc = spawn("pnpm", uiArgs, { stdio, env: frontendEnv })
+    const proc = spawn("pnpm", uiArgs, { stdio, env: frontendEnv, detached: true })
     processes.push({ name: "frontend", proc })
   }
 
@@ -217,7 +217,13 @@ export async function runDev(
     if (cleanedUp) return
     cleanedUp = true
     for (const { proc } of processes) {
-      proc.kill("SIGTERM")
+      try {
+        // Kill the entire process group (negative PID) so pnpm's children
+        // (tsc, tsx, vite) also receive the signal cleanly.
+        process.kill(-proc.pid, "SIGTERM")
+      } catch {
+        // Process may have already exited.
+      }
     }
   }
 
