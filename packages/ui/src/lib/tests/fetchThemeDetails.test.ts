@@ -37,9 +37,7 @@ describe("fetchThemeDetails", () => {
 
     await fetchThemeDetails("vscode.theme-gruvbox/dark medium")
 
-    expect(fetch).toHaveBeenCalledWith(
-      "/api/themes/vscode.theme-gruvbox%2Fdark%20medium",
-    )
+    expect(fetch).toHaveBeenCalledWith("/api/themes/vscode.theme-gruvbox%2Fdark%20medium")
   })
 
   it("returns null when response is not ok", async () => {
