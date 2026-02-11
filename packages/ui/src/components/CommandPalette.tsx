@@ -14,6 +14,8 @@ import {
   IconChevronUp,
   IconChevronDown,
   IconCornerDownLeft,
+  IconArrowBigUp,
+  IconArrowBigDown,
 } from "@tabler/icons-react"
 import {
   hotkeys as agentHotkeys,
@@ -42,6 +44,8 @@ export type CommandAction =
   | "previousTask"
   | "nextTask"
   | "openTask"
+  | "previousWorkspace"
+  | "nextWorkspace"
 
 /** Single command entry in the palette. */
 type CommandItem = {
@@ -105,6 +109,8 @@ export function CommandPalette({
       nextTask: <IconChevronDown className="h-4 w-4" />,
       openTask: <IconCornerDownLeft className="h-4 w-4" />,
       showHotkeys: <IconKeyboard className="h-4 w-4" />,
+      previousWorkspace: <IconArrowBigUp className="h-4 w-4" />,
+      nextWorkspace: <IconArrowBigDown className="h-4 w-4" />,
     }),
     [],
   )

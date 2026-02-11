@@ -10,6 +10,7 @@ import {
   useBeadsHotkeys,
   useBeadsViewStore,
   useWorkspace,
+  cycleWorkspace,
   selectSelectedTaskId,
   selectTasks,
   selectClosedTimeFilter,
@@ -99,6 +100,17 @@ function AppContent() {
     setHotkeysDialogOpen(true)
   }, [])
 
+  // Workspace navigation hotkey handlers
+  const handlePreviousWorkspace = useCallback(() => {
+    const target = cycleWorkspace(ws.workspaces, ws.current, "previous")
+    if (target) wsActions.switchWorkspace(target.path)
+  }, [ws.workspaces, ws.current, wsActions])
+
+  const handleNextWorkspace = useCallback(() => {
+    const target = cycleWorkspace(ws.workspaces, ws.current, "next")
+    if (target) wsActions.switchWorkspace(target.path)
+  }, [ws.workspaces, ws.current, wsActions])
+
   // Register hotkeys
   const { registeredHotkeys } = useBeadsHotkeys({
     handlers: {
@@ -107,6 +119,8 @@ function AppContent() {
       nextTask: navigateNext,
       openTask: openSelected,
       showHotkeys: handleShowHotkeys,
+      previousWorkspace: handlePreviousWorkspace,
+      nextWorkspace: handleNextWorkspace,
     },
   })
 

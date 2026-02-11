@@ -56,6 +56,10 @@ function getKeyDisplay(key: string): string {
       return "\u2190"
     case "arrowright":
       return "\u2192"
+    case "pageup":
+      return "PgUp"
+    case "pagedown":
+      return "PgDn"
     default:
       return key.toUpperCase()
   }
@@ -118,7 +122,12 @@ function isInputElement(target: EventTarget | null): boolean {
 }
 
 /** Actions that should still work when focused on an input element */
-const ALLOWED_IN_INPUT: BeadsHotkeyAction[] = ["focusSearch", "showHotkeys"]
+const ALLOWED_IN_INPUT: BeadsHotkeyAction[] = [
+  "focusSearch",
+  "showHotkeys",
+  "previousWorkspace",
+  "nextWorkspace",
+]
 
 /**
  * Hook for global keyboard hotkeys in beads-view.

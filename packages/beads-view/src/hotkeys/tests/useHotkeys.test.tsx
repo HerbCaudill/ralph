@@ -46,6 +46,8 @@ describe("hotkeys config", () => {
     "nextTask",
     "openTask",
     "showHotkeys",
+    "previousWorkspace",
+    "nextWorkspace",
   ]
 
   it("exports exactly the expected set of actions", () => {
@@ -95,12 +97,24 @@ describe("hotkeys config", () => {
     expect(hotkeys.showHotkeys.modifiers).toEqual(["cmd"])
   })
 
+  it("parses cmd+PageUp into key='PageUp' with modifiers=['cmd']", () => {
+    expect(hotkeys.previousWorkspace.key).toBe("PageUp")
+    expect(hotkeys.previousWorkspace.modifiers).toEqual(["cmd"])
+  })
+
+  it("parses cmd+PageDown into key='PageDown' with modifiers=['cmd']", () => {
+    expect(hotkeys.nextWorkspace.key).toBe("PageDown")
+    expect(hotkeys.nextWorkspace.modifiers).toEqual(["cmd"])
+  })
+
   it("assigns correct categories", () => {
     expect(hotkeys.focusSearch.category).toBe("Navigation")
     expect(hotkeys.previousTask.category).toBe("Navigation")
     expect(hotkeys.nextTask.category).toBe("Navigation")
     expect(hotkeys.openTask.category).toBe("Navigation")
     expect(hotkeys.showHotkeys.category).toBe("Help")
+    expect(hotkeys.previousWorkspace.category).toBe("Navigation")
+    expect(hotkeys.nextWorkspace.category).toBe("Navigation")
   })
 })
 
@@ -182,6 +196,26 @@ describe("getHotkeyDisplayString", () => {
     expect(getHotkeyDisplayString(down)).toBe("\u2193")
     expect(getHotkeyDisplayString(left)).toBe("\u2190")
     expect(getHotkeyDisplayString(right)).toBe("\u2192")
+  })
+
+  it("formats PageUp key with cmd modifier (non-Mac)", () => {
+    const config: HotkeyConfig = {
+      key: "PageUp",
+      modifiers: ["cmd"],
+      description: "test",
+      category: "test",
+    }
+    expect(getHotkeyDisplayString(config)).toBe("Ctrl+PgUp")
+  })
+
+  it("formats PageDown key with cmd modifier (non-Mac)", () => {
+    const config: HotkeyConfig = {
+      key: "PageDown",
+      modifiers: ["cmd"],
+      description: "test",
+      category: "test",
+    }
+    expect(getHotkeyDisplayString(config)).toBe("Ctrl+PgDn")
   })
 
   it("formats Backspace key", () => {
@@ -308,6 +342,32 @@ describe("useBeadsHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
+    it("calls handler for cmd+PageUp (previousWorkspace)", () => {
+      const handler = vi.fn()
+      renderHook(() =>
+        useBeadsHotkeys({
+          handlers: { previousWorkspace: handler },
+        }),
+      )
+
+      // On non-Mac, cmd maps to ctrlKey
+      fireKey({ key: "PageUp", ctrlKey: true })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("calls handler for cmd+PageDown (nextWorkspace)", () => {
+      const handler = vi.fn()
+      renderHook(() =>
+        useBeadsHotkeys({
+          handlers: { nextWorkspace: handler },
+        }),
+      )
+
+      // On non-Mac, cmd maps to ctrlKey
+      fireKey({ key: "PageDown", ctrlKey: true })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
     it("does not fire when no handler is registered for the action", () => {
       // Register only focusSearch, press ArrowUp (previousTask) -- should not throw
       const handler = vi.fn()
@@ -417,6 +477,30 @@ describe("useBeadsHotkeys", () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
+    it("allows previousWorkspace when target is an input element", () => {
+      const handler = vi.fn()
+      renderHook(() =>
+        useBeadsHotkeys({
+          handlers: { previousWorkspace: handler },
+        }),
+      )
+
+      fireKey({ key: "PageUp", ctrlKey: true, target: inputEl })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it("allows nextWorkspace when target is an input element", () => {
+      const handler = vi.fn()
+      renderHook(() =>
+        useBeadsHotkeys({
+          handlers: { nextWorkspace: handler },
+        }),
+      )
+
+      fireKey({ key: "PageDown", ctrlKey: true, target: inputEl })
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
     it("blocks openTask (Enter) when target is a textarea", () => {
       const textarea = createFakeInput("TEXTAREA")
       const handler = vi.fn()
@@ -472,7 +556,7 @@ describe("useBeadsHotkeys", () => {
       const { result } = renderHook(() => useBeadsHotkeys({ handlers: {} }))
 
       const registered = result.current.registeredHotkeys
-      expect(registered).toHaveLength(5)
+      expect(registered).toHaveLength(7)
 
       const actions = registered.map(r => r.action)
       expect(actions).toContain("focusSearch")
@@ -480,6 +564,8 @@ describe("useBeadsHotkeys", () => {
       expect(actions).toContain("nextTask")
       expect(actions).toContain("openTask")
       expect(actions).toContain("showHotkeys")
+      expect(actions).toContain("previousWorkspace")
+      expect(actions).toContain("nextWorkspace")
     })
 
     it("each entry has a non-empty display string", () => {

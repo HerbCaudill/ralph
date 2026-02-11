@@ -24,6 +24,16 @@
       "key": "cmd+/",
       "description": "Show keyboard shortcuts",
       "category": "Help"
+    },
+    "previousWorkspace": {
+      "key": "cmd+PageUp",
+      "description": "Switch to previous workspace",
+      "category": "Navigation"
+    },
+    "nextWorkspace": {
+      "key": "cmd+PageDown",
+      "description": "Switch to next workspace",
+      "category": "Navigation"
     }
   }
 }

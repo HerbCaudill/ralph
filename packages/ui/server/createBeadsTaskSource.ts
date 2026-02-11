@@ -22,7 +22,9 @@ export function createBeadsTaskSource(
     async getReadyTask(workerName: string): Promise<ReadyTask | null> {
       const res = await fetch(`${beadsServerUrl}/api/tasks?ready=true&workspace=${ws}`)
       if (!res.ok) return null
-      const data = (await res.json()) as { issues?: Array<{ id: string; title: string; assignee?: string }> }
+      const data = (await res.json()) as {
+        issues?: Array<{ id: string; title: string; assignee?: string }>
+      }
       const issues = data.issues ?? []
       // Pick the first task that is unassigned or already assigned to this worker
       const task = issues.find(t => !t.assignee || t.assignee === workerName)

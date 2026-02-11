@@ -27,6 +27,7 @@ import {
   selectSelectedTaskId,
   useWorkspace,
   useBeadsHotkeys,
+  cycleWorkspace,
   type SearchInputHandle,
 } from "@herbcaudill/beads-view"
 import {
@@ -310,6 +311,17 @@ export function WorkspaceView() {
     }
   }, [controlState, connectionStatus, start])
 
+  // Workspace navigation hotkey handlers
+  const handlePreviousWorkspace = useCallback(() => {
+    const target = cycleWorkspace(workspaces, workspace, "previous")
+    if (target) handleWorkspaceSwitch(target.path)
+  }, [workspaces, workspace, handleWorkspaceSwitch])
+
+  const handleNextWorkspace = useCallback(() => {
+    const target = cycleWorkspace(workspaces, workspace, "next")
+    if (target) handleWorkspaceSwitch(target.path)
+  }, [workspaces, workspace, handleWorkspaceSwitch])
+
   // Register hotkeys
   useAgentHotkeys({
     handlers: {
@@ -328,6 +340,8 @@ export function WorkspaceView() {
       nextTask: navigateNext,
       openTask: openSelected,
       showHotkeys: handleShowHotkeys,
+      previousWorkspace: handlePreviousWorkspace,
+      nextWorkspace: handleNextWorkspace,
     },
   })
 
@@ -525,6 +539,8 @@ export function WorkspaceView() {
           previousTask: navigatePrevious,
           nextTask: navigateNext,
           openTask: openSelected,
+          previousWorkspace: handlePreviousWorkspace,
+          nextWorkspace: handleNextWorkspace,
         }}
         controlState={controlState}
         isConnected={connectionStatus === "connected"}

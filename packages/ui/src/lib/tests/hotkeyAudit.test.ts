@@ -100,6 +100,8 @@ describe("cross-package hotkey audit", () => {
       "nextTask",
       "openTask",
       "showHotkeys",
+      "previousWorkspace",
+      "nextWorkspace",
     ]
 
     it("agent-view defines all expected actions", () => {
@@ -185,10 +187,12 @@ describe("cross-package hotkey audit", () => {
       expect(deduplicatedActions).toContain("previousTask")
       expect(deduplicatedActions).toContain("nextTask")
       expect(deduplicatedActions).toContain("openTask")
+      expect(deduplicatedActions).toContain("previousWorkspace")
+      expect(deduplicatedActions).toContain("nextWorkspace")
 
-      // Total unique entries should be agent(6) + beads(4, minus showHotkeys) = 10
+      // Total unique entries should be agent(6) + beads(6, minus showHotkeys) = 12
       const totalEntries = Object.keys(agentHotkeys).length + deduplicatedBeadsEntries.length
-      expect(totalEntries).toBe(10)
+      expect(totalEntries).toBe(12)
     })
   })
 })
