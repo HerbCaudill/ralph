@@ -87,7 +87,8 @@ export function MainLayout({ sidebar, rightPanel, overlay, children }: MainLayou
 
   return (
     <div
-      className="flex h-full w-full overflow-hidden"
+      className="flex h-full w-full overflow-hidden rounded-bl-[10px] rounded-br-[10px]"
+      style={{ border: "2px solid var(--repo-accent)" }}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}

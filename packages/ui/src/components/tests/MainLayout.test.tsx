@@ -93,6 +93,40 @@ describe("MainLayout", () => {
     })
   })
 
+  describe("accent border", () => {
+    it("has a 2px solid border using the accent color CSS variable", () => {
+      const { container } = render(
+        <MainLayout>
+          <div>Main content</div>
+        </MainLayout>,
+      )
+      const layoutContainer = container.firstChild as HTMLElement
+      expect(layoutContainer.style.border).toBe("2px solid var(--repo-accent)")
+    })
+
+    it("has rounded bottom corners", () => {
+      const { container } = render(
+        <MainLayout>
+          <div>Main content</div>
+        </MainLayout>,
+      )
+      const layoutContainer = container.firstChild as HTMLElement
+      expect(layoutContainer).toHaveClass("rounded-bl-[10px]")
+      expect(layoutContainer).toHaveClass("rounded-br-[10px]")
+    })
+
+    it("does not have rounded top corners", () => {
+      const { container } = render(
+        <MainLayout>
+          <div>Main content</div>
+        </MainLayout>,
+      )
+      const layoutContainer = container.firstChild as HTMLElement
+      expect(layoutContainer).not.toHaveClass("rounded-tl-[10px]")
+      expect(layoutContainer).not.toHaveClass("rounded-tr-[10px]")
+    })
+  })
+
   describe("layout structure", () => {
     it("renders all three panels when provided", () => {
       render(
