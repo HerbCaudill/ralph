@@ -8,9 +8,7 @@ Note: Your working directory is the root of the codebase.
 
 ### Find available work
 
-Run `bd ready --assignee {agentName} ""` to list issues that are assigned to you.
-
-If there are no issues assigned to you, run `bd ready --unassigned` to find unassigned issues.
+Run `bd ready --assignee {agentName} && bd ready --unassigned` to list issues that are assigned to you or unassigned.
 
 If no issues are ready, output `<promise>COMPLETE</promise>` and end your session.
 
