@@ -383,6 +383,16 @@ describe("WorkspaceView session history wiring", () => {
       renderWorkspaceView()
       expect(capturedRalphRunnerProps.sessionId).toBe("live-session-1")
     })
+
+    it("passes historical viewed sessionId to RalphRunner when viewing history", () => {
+      mockSessionId = "live-session-1"
+      mockUrlSessionId = "old-session-2"
+      mockIsViewingHistorical = true
+      mockHistoricalEvents = [{ type: "assistant", timestamp: 500 } as ChatEvent]
+
+      renderWorkspaceView()
+      expect(capturedRalphRunnerProps.sessionId).toBe("old-session-2")
+    })
   })
 
   describe("effective events (live vs historical)", () => {

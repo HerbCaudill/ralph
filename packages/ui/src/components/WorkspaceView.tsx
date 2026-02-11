@@ -105,6 +105,7 @@ export function WorkspaceView() {
   // Effective events and streaming state: use historical when viewing past sessions
   const events = isViewingHistorical && historicalEvents ? historicalEvents : liveEvents
   const isStreaming = isViewingHistorical ? false : liveIsStreaming
+  const viewedSessionId = isViewingHistorical ? (urlSessionId ?? null) : sessionId
 
   // Task chat state from agent-server (scoped to workspace)
   const { state: taskChatState, actions: taskChatActions } = useTaskChat(workspaceId)
@@ -442,7 +443,7 @@ export function WorkspaceView() {
       connectionStatus={connectionStatus}
       isStoppingAfterCurrent={effectiveIsStoppingAfterCurrent}
       sessions={sessions}
-      sessionId={sessionId}
+      sessionId={viewedSessionId}
       isViewingHistoricalSession={isViewingHistorical}
       taskId={currentTaskId}
       taskTitle={currentTaskTitle}
