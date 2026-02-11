@@ -1,6 +1,10 @@
 import { EventEmitter } from "node:events"
-import type { ChildProcess } from "node:child_process"
-import { WorkerLoop, type ReadyTask, type WorkerState as WorkerLoopState } from "./WorkerLoop.js"
+import {
+  WorkerLoop,
+  type ReadyTask,
+  type RunAgentResult,
+  type WorkerState as WorkerLoopState,
+} from "./WorkerLoop.js"
 import { getWorkerName, type WorkerName } from "@herbcaudill/ralph-shared"
 
 /**
@@ -19,11 +23,11 @@ export interface WorkerOrchestratorOptions {
   mainWorkspacePath: string
 
   /**
-   * Function to spawn a Claude CLI process.
-   * Receives the working directory (worktree path) where Claude should run.
-   * Should return a ChildProcess.
+   * Function to run an agent session.
+   * Receives the working directory, task ID, and task title.
+   * Returns a promise with the exit code and session ID.
    */
-  spawnClaude: (cwd: string) => ChildProcess
+  runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
 
   /**
    * Function to get the count of ready tasks.
@@ -118,7 +122,7 @@ interface WorkerState {
 export class WorkerOrchestrator extends EventEmitter {
   private maxWorkers: number
   private mainWorkspacePath: string
-  private spawnClaude: (cwd: string) => ChildProcess
+  private runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
   private getReadyTasksCount: () => Promise<number>
   private getReadyTask: (workerName: string) => Promise<ReadyTask | null>
   private claimTask: (taskId: string, workerName: string) => Promise<void>
@@ -135,7 +139,7 @@ export class WorkerOrchestrator extends EventEmitter {
     super()
     this.maxWorkers = options.maxWorkers ?? 3
     this.mainWorkspacePath = options.mainWorkspacePath
-    this.spawnClaude = options.spawnClaude
+    this.runAgent = options.runAgent
     this.getReadyTasksCount = options.getReadyTasksCount
     this.getReadyTask = options.getReadyTask
     this.claimTask = options.claimTask
@@ -298,7 +302,7 @@ export class WorkerOrchestrator extends EventEmitter {
     const loop = new WorkerLoop({
       workerName,
       mainWorkspacePath: this.mainWorkspacePath,
-      spawnClaude: this.spawnClaude,
+      runAgent: this.runAgent,
       getReadyTask: () => this.getReadyTask(workerName),
       claimTask: taskId => this.claimTask(taskId, workerName),
       closeTask: this.closeTask,

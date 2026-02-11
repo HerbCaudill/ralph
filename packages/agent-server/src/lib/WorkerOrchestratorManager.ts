@@ -1,12 +1,12 @@
 import { EventEmitter } from "node:events"
-import { spawn, type ChildProcess } from "node:child_process"
+import { spawn } from "node:child_process"
 import {
   WorkerOrchestrator,
   type WorkerOrchestratorEvents,
   type OrchestratorState,
   type WorkerInfo,
 } from "./WorkerOrchestrator.js"
-import { type ReadyTask } from "./WorkerLoop.js"
+import { type ReadyTask, type RunAgentResult } from "./WorkerLoop.js"
 import { findClaudeExecutable } from "../findClaudeExecutable.js"
 
 /**
@@ -62,10 +62,10 @@ export interface WorkerOrchestratorManagerOptions {
   runTests?: boolean
 
   /**
-   * Custom function to spawn Claude CLI.
+   * Custom function to run an agent session.
    * If not provided, defaults to spawning the Claude CLI with --print flag.
    */
-  spawnClaude?: (cwd: string) => ChildProcess
+  runAgent?: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
 }
 
 /**
@@ -97,7 +97,11 @@ export class WorkerOrchestratorManager extends EventEmitter {
   private mainWorkspacePath: string
   private app: string
   private runTestsEnabled: boolean
-  private customSpawnClaude?: (cwd: string) => ChildProcess
+  private customRunAgent?: (
+    cwd: string,
+    taskId: string,
+    taskTitle: string,
+  ) => Promise<RunAgentResult>
 
   constructor(options: WorkerOrchestratorManagerOptions) {
     super()
@@ -106,14 +110,14 @@ export class WorkerOrchestratorManager extends EventEmitter {
     this.taskSource = options.taskSource
     this.app = options.app ?? "ralph"
     this.runTestsEnabled = options.runTests ?? false
-    this.customSpawnClaude = options.spawnClaude
+    this.customRunAgent = options.runAgent
 
     // Create orchestrator with task source callbacks
     this.orchestrator = new WorkerOrchestrator({
       maxWorkers: options.maxWorkers ?? 3,
       mainWorkspacePath: this.mainWorkspacePath,
       pollingInterval: options.pollingInterval ?? 5000,
-      spawnClaude: cwd => this.spawnClaude(cwd),
+      runAgent: (cwd, taskId, taskTitle) => this.runAgentSession(cwd, taskId, taskTitle),
       getReadyTasksCount: () => this.getReadyTasksCount(),
       getReadyTask: workerName => this.getReadyTask(workerName),
       claimTask: (taskId, workerName) => this.claimTask(taskId, workerName),
@@ -209,15 +213,22 @@ export class WorkerOrchestratorManager extends EventEmitter {
     await this.taskSource.closeTask(taskId)
   }
 
-  // ── Claude CLI ────────────────────────────────────────────────────────
+  // ── Agent Session ─────────────────────────────────────────────────────
 
   /**
-   * Spawn a Claude CLI process in the given directory.
+   * Run an agent session in the given directory.
    */
-  private spawnClaude(cwd: string): ChildProcess {
-    // Use custom spawn function if provided
-    if (this.customSpawnClaude) {
-      return this.customSpawnClaude(cwd)
+  private async runAgentSession(
+    /** Working directory for the agent */
+    cwd: string,
+    /** The task ID */
+    taskId: string,
+    /** The task title */
+    taskTitle: string,
+  ): Promise<RunAgentResult> {
+    // Use custom run function if provided
+    if (this.customRunAgent) {
+      return this.customRunAgent(cwd, taskId, taskTitle)
     }
 
     const claudeExecutable = findClaudeExecutable()
@@ -226,17 +237,25 @@ export class WorkerOrchestratorManager extends EventEmitter {
     }
 
     // Spawn Claude with the Ralph app prompt
-    const proc = spawn(claudeExecutable, ["--print", "--dangerously-skip-permissions"], {
-      cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        // Pass the app name for prompt loading
-        CLAUDE_APP: this.app,
-      },
-    })
+    return new Promise((resolve, reject) => {
+      const proc = spawn(claudeExecutable, ["--print", "--dangerously-skip-permissions"], {
+        cwd,
+        stdio: ["pipe", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          // Pass the app name for prompt loading
+          CLAUDE_APP: this.app,
+        },
+      })
 
-    return proc
+      proc.on("close", code => {
+        resolve({ exitCode: code ?? 0, sessionId: "" })
+      })
+
+      proc.on("error", error => {
+        reject(error)
+      })
+    })
   }
 
   // ── Test Runner ───────────────────────────────────────────────────────

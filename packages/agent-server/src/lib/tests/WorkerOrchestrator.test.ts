@@ -6,19 +6,21 @@ import {
 } from "../WorkerOrchestrator.js"
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { spawn, type ChildProcess } from "node:child_process"
-import { EventEmitter } from "node:events"
+import { spawn } from "node:child_process"
 
 /**
  * Simulates work in a worktree (writing a file, staging, and committing).
  * Checks the abort signal before each operation to avoid ENOENT errors
  * when tests clean up directories mid-operation.
- *
- * @param cwd - Working directory path
- * @param signal - Abort signal to check for cancellation
- * @param delayMs - Optional delay before starting work (to simulate long-running tasks)
  */
-async function simulateWork(cwd: string, signal: AbortSignal, delayMs?: number): Promise<void> {
+async function simulateWork(
+  /** Working directory path */
+  cwd: string,
+  /** Abort signal to check for cancellation */
+  signal: AbortSignal,
+  /** Optional delay before starting work (to simulate long-running tasks) */
+  delayMs?: number,
+): Promise<void> {
   if (delayMs) {
     await new Promise(resolve => setTimeout(resolve, delayMs))
     if (signal.aborted) return
@@ -69,65 +71,33 @@ function git(
 }
 
 /**
- * Mock function for spawning Claude CLI process.
- * Returns a mock ChildProcess that immediately completes successfully.
- *
- * The onStdout callback receives an emit function and an AbortSignal.
- * Use the signal to detect when the process has been killed and abort
- * any pending async operations to avoid writing to cleaned-up directories.
+ * Create a mock runAgent function that simulates an agent session.
+ * Returns the configured exit code and a generated session ID.
  */
-function createMockClaudeProcess(options: {
+function createMockRunAgent(options: {
   exitCode?: number
-  stdout?: string[]
-  onStdout?: (callback: (chunk: Buffer) => void, signal: AbortSignal) => void | Promise<void>
-}): ChildProcess {
-  const proc = new EventEmitter() as unknown as ChildProcess
-  const stdout = new EventEmitter()
-  const stderr = new EventEmitter()
+  onRun?: (cwd: string, signal: AbortSignal) => void | Promise<void>
+  delayMs?: number
+}): {
+  runAgent: (
+    cwd: string,
+    taskId: string,
+    taskTitle: string,
+  ) => Promise<{ exitCode: number; sessionId: string }>
+  abort: () => void
+} {
   const abortController = new AbortController()
 
-  // @ts-expect-error - mocking ChildProcess
-  proc.stdout = stdout
-  // @ts-expect-error - mocking ChildProcess
-  proc.stderr = stderr
-  // @ts-expect-error - mocking ChildProcess
-  proc.pid = 12345
-  // @ts-expect-error - mocking ChildProcess
-  proc.killed = false
-  // @ts-expect-error - mocking ChildProcess
-  proc.kill = () => {
-    // @ts-expect-error - mocking ChildProcess
-    proc.killed = true
-    abortController.abort()
-    proc.emit("close", 0)
-    return true
+  const runAgent = async (cwd: string, taskId: string, taskTitle: string) => {
+    if (options.onRun) {
+      await options.onRun(cwd, abortController.signal)
+    } else if (options.delayMs) {
+      await new Promise(resolve => setTimeout(resolve, options.delayMs))
+    }
+    return { exitCode: options.exitCode ?? 0, sessionId: `session-${taskId}` }
   }
 
-  // Schedule stdout chunks and exit
-  setTimeout(async () => {
-    // Don't run if already killed
-    if (abortController.signal.aborted) return
-
-    try {
-      if (options.onStdout) {
-        await options.onStdout(chunk => stdout.emit("data", chunk), abortController.signal)
-      } else if (options.stdout) {
-        for (const line of options.stdout) {
-          stdout.emit("data", Buffer.from(line + "\n"))
-        }
-      }
-    } catch {
-      // Ignore errors from aborted operations (e.g., ENOENT after cleanup)
-    }
-
-    // Only emit close if not already killed
-    // @ts-expect-error - mocking ChildProcess
-    if (!proc.killed) {
-      proc.emit("close", options.exitCode ?? 0)
-    }
-  }, 10)
-
-  return proc
+  return { runAgent, abort: () => abortController.abort() }
 }
 
 describe("WorkerOrchestrator", () => {
@@ -135,7 +105,7 @@ describe("WorkerOrchestrator", () => {
   const mainWorkspacePath = join(testDir, "project")
   let activeOrchestrator: WorkerOrchestrator | null = null
 
-  // Helper to create an orchestrator and track it for cleanup
+  /** Create an orchestrator and track it for cleanup. */
   function createTrackedOrchestrator(options: WorkerOrchestratorOptions): WorkerOrchestrator {
     const orchestrator = new WorkerOrchestrator(options)
     // Suppress unhandled errors from tests - they're expected in some cases
@@ -198,10 +168,11 @@ describe("WorkerOrchestrator", () => {
 
   describe("constructor", () => {
     it("initializes with required options", () => {
+      const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 3,
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent,
         getReadyTasksCount: async () => 0,
         getReadyTask: async () => null,
         claimTask: async () => {},
@@ -213,9 +184,10 @@ describe("WorkerOrchestrator", () => {
     })
 
     it("defaults to 3 workers if not specified", () => {
+      const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent,
         getReadyTasksCount: async () => 0,
         getReadyTask: async () => null,
         claimTask: async () => {},
@@ -230,18 +202,16 @@ describe("WorkerOrchestrator", () => {
     it("spins up workers based on available tasks (up to maxWorkers)", async () => {
       const workerNames: string[] = []
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 3,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 5, // More tasks than workers
         getReadyTask: async workerName => {
           // Track which workers requested tasks
@@ -272,10 +242,11 @@ describe("WorkerOrchestrator", () => {
     it("only spins up workers if there are enough ready tasks", async () => {
       const startedWorkers: string[] = []
 
+      const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 5,
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent,
         getReadyTasksCount: async () => 2, // Only 2 tasks
         getReadyTask: async workerName => {
           if (startedWorkers.length < 2) {
@@ -298,10 +269,11 @@ describe("WorkerOrchestrator", () => {
     })
 
     it("does not start if already running", async () => {
+      const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 3,
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent,
         getReadyTasksCount: async () => 0,
         getReadyTask: async () => null,
         claimTask: async () => {},
@@ -319,10 +291,11 @@ describe("WorkerOrchestrator", () => {
 
   describe("stop", () => {
     it("stops all workers immediately", async () => {
+      const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent,
         getReadyTasksCount: async () => 5,
         getReadyTask: async workerName => ({
           id: `bd-task-${workerName}`,
@@ -349,18 +322,16 @@ describe("WorkerOrchestrator", () => {
       let stopRequested = false
       const assignedTasks = new Set<string>()
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => (stopRequested ? 0 : 10),
         getReadyTask: async workerName => {
           // After stop is requested, don't give new tasks
@@ -410,18 +381,16 @@ describe("WorkerOrchestrator", () => {
     it("workers run independently with unique names", async () => {
       const workerNames = new Set<string>()
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 3,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 3,
         getReadyTask: async workerName => {
           if (!workerNames.has(workerName)) {
@@ -453,18 +422,16 @@ describe("WorkerOrchestrator", () => {
       let availableTasks = 1
       const tasksStarted: string[] = []
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 3,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => availableTasks,
         getReadyTask: async workerName => {
           if (availableTasks > 0) {
@@ -499,18 +466,16 @@ describe("WorkerOrchestrator", () => {
     it("emits worker_started when a worker begins", async () => {
       const events: Array<{ type: string; workerName: string }> = []
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 2,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}`,
@@ -537,18 +502,16 @@ describe("WorkerOrchestrator", () => {
       const stoppedWorkers: string[] = []
       let taskCount = 0
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 1,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => (taskCount < 1 ? 1 : 0),
         getReadyTask: async workerName => {
           if (taskCount < 1) {
@@ -579,10 +542,11 @@ describe("WorkerOrchestrator", () => {
     it("emits state_changed when orchestrator state changes", async () => {
       const states: OrchestratorState[] = []
 
+      const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 1,
         mainWorkspacePath,
-        spawnClaude: () => createMockClaudeProcess({}),
+        runAgent,
         getReadyTasksCount: async () => 0,
         getReadyTask: async () => null,
         claimTask: async () => {},
@@ -603,18 +567,16 @@ describe("WorkerOrchestrator", () => {
 
   describe("getWorkerNames", () => {
     it("returns names of all active workers", async () => {
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal, 200)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal, 200)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 2,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}`,
@@ -639,18 +601,16 @@ describe("WorkerOrchestrator", () => {
     it("can pause a specific worker", async () => {
       const pausedWorkers: string[] = []
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal, 300)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal, 300)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 2,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}`,
@@ -686,18 +646,16 @@ describe("WorkerOrchestrator", () => {
     it("can resume a paused worker", async () => {
       const events: Array<{ type: string; workerName: string }> = []
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal, 200)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 1,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal, 200)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 2,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}`,
@@ -740,18 +698,16 @@ describe("WorkerOrchestrator", () => {
       const stoppedWorkers: string[] = []
       const startedWorkers: string[] = []
 
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal, 300)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal, 300)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 5,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}-${Date.now()}`,
@@ -792,18 +748,16 @@ describe("WorkerOrchestrator", () => {
     })
 
     it("getWorkerState returns correct state for each worker", async () => {
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal, 300)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal, 300)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 2,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}`,
@@ -838,18 +792,16 @@ describe("WorkerOrchestrator", () => {
     })
 
     it("getWorkerStates returns all worker states", async () => {
+      const { runAgent } = createMockRunAgent({
+        onRun: async (cwd, signal) => {
+          await simulateWork(cwd, signal, 300)
+        },
+      })
+
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 2,
         mainWorkspacePath,
-        spawnClaude: cwd => {
-          return createMockClaudeProcess({
-            onStdout: async (emit, signal) => {
-              await simulateWork(cwd, signal, 300)
-              if (!signal.aborted)
-                emit(Buffer.from(JSON.stringify({ type: "result", result: "Done" }) + "\n"))
-            },
-          })
-        },
+        runAgent,
         getReadyTasksCount: async () => 2,
         getReadyTask: async workerName => ({
           id: `bd-${workerName}`,
