@@ -10,6 +10,11 @@ import { execSync, spawn } from "node:child_process"
 import { Transform } from "node:stream"
 import { setTimeout as delay } from "node:timers/promises"
 
+// Many child processes pipe to the same stdout/stderr; raise the listener
+// limit to avoid false-positive EventEmitter leak warnings.
+process.stdout.setMaxListeners(30)
+process.stderr.setMaxListeners(30)
+
 /**
  * Regex matching tsc --watch noise lines:
  * - "X:XX:XX AM - Starting compilation in watch mode..."
