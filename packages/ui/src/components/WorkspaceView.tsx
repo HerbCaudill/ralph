@@ -124,15 +124,18 @@ export function WorkspaceView() {
     actions: { switchWorkspace },
   } = useWorkspace({ onSwitchStart: clearTasks })
 
-  // When the route changes (user switches workspace via URL), sync workspace state.
-  // Skip the initial render — useWorkspace's init effect handles that.
+  // When the route changes (user switches workspace via URL), sync workspace state
+  // and re-fetch tasks. Skip the initial render — useWorkspace's init effect handles that.
   const prevWorkspaceId = useRef(workspaceId)
   useEffect(() => {
     if (workspaceId && workspaceId !== prevWorkspaceId.current) {
       prevWorkspaceId.current = workspaceId
       switchWorkspace(workspaceId)
+      // API client is already configured with the new workspaceId (sync render phase above),
+      // so refresh will fetch tasks for the correct workspace.
+      refresh()
     }
-  }, [workspaceId, switchWorkspace])
+  }, [workspaceId, switchWorkspace, refresh])
 
   /** Switch workspace by navigating to its URL. */
   const handleWorkspaceSwitch = useCallback(
