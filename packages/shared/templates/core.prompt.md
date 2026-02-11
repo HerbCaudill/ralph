@@ -16,6 +16,8 @@ If no issues are ready, output `<promise>COMPLETE</promise>` and end your sessio
 
 Select the highest-priority issue. Finish in-progress tasks first. Bugs take priority. Otherwise use your judgement.
 
+Only work on ONE TASK, and then end your session.
+
 - Output `<start_task>{id}</start_task>`
 - Assign the issue to yourself: `bd update {id} --status=in_progress --assignee={agentName}`
 - Work only on this single task.
@@ -30,7 +32,8 @@ When finished:
 - Close the issue: `bd close {id}`
 - Record a summary: `bd comments add {id} "..." --author=Ralph`
 - Output `<end_task>{id}</end_task>`
-- End your session.
+
+When you have completed your task, you MUST end your session. Do not look for another task.
 
 ---
 
