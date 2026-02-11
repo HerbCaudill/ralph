@@ -115,12 +115,12 @@ describe("getSessionSummary", () => {
     expect(result).toEqual({ taskId: "r-abc123.5" })
   })
 
-  it("passes the correct app parameter to readEvents", async () => {
+  it("passes the correct app and workspace parameters to readEvents", async () => {
     const readEventsSpy = vi.fn().mockResolvedValue([])
     const persister = { readEvents: readEventsSpy } as unknown as SessionPersister
 
-    await getSessionSummary("session-123", persister, "ralph")
+    await getSessionSummary("session-123", persister, "ralph", "herbcaudill/ralph")
 
-    expect(readEventsSpy).toHaveBeenCalledWith("session-123", "ralph")
+    expect(readEventsSpy).toHaveBeenCalledWith("session-123", "ralph", "herbcaudill/ralph")
   })
 })

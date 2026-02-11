@@ -8,6 +8,7 @@ import {
   type ConversationMessage,
 } from "./agentTypes.js"
 import type { AgentEvent } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { createAdapter, isAdapterRegistered, registerDefaultAdapters } from "./AdapterRegistry.js"
 
 /** Information about a chat session. */
@@ -26,6 +27,8 @@ export interface SessionInfo {
   lastMessageAt?: number
   /** App namespace for this session. */
   app?: string
+  /** Workspace identifier (e.g. "owner/repo") derived from cwd. */
+  workspace?: string
   /** System prompt stored at session creation. */
   systemPrompt?: string
   /** Allowed tools stored at session creation. */
@@ -121,11 +124,13 @@ export class ChatSessionManager extends EventEmitter {
     }
 
     const sessionId = generateId()
+    const cwd = options.cwd ?? this.defaultCwd
+    const workspace = getWorkspaceId({ workspacePath: cwd })
     const session: SessionState = {
       sessionId,
       adapter,
       status: "idle",
-      cwd: options.cwd ?? this.defaultCwd,
+      cwd,
       createdAt: Date.now(),
       adapterInstance: null,
       conversationContext: {
@@ -135,6 +140,7 @@ export class ChatSessionManager extends EventEmitter {
       },
       messageQueue: [],
       app: options.app,
+      workspace,
       systemPrompt: options.systemPrompt,
       allowedTools: options.allowedTools,
     }
@@ -150,11 +156,13 @@ export class ChatSessionManager extends EventEmitter {
         adapter,
         cwd: session.cwd,
         app: options.app,
+        workspace,
         systemPrompt: options.systemPrompt,
         allowedTools: options.allowedTools,
         timestamp: Date.now(),
       },
       options.app,
+      workspace,
     )
 
     return { sessionId }
@@ -203,7 +211,7 @@ export class ChatSessionManager extends EventEmitter {
       timestamp: Date.now(),
       ...(options.isSystemPrompt ? { isSystemPrompt: true } : {}),
     }
-    await this.persister.appendEvent(sessionId, userEvent, session.app)
+    await this.persister.appendEvent(sessionId, userEvent, session.app, session.workspace)
     this.emit("event", sessionId, userEvent)
 
     // Create adapter if needed
@@ -215,7 +223,7 @@ export class ChatSessionManager extends EventEmitter {
 
     // Wire up event forwarding
     const onEvent = async (event: AgentEvent) => {
-      await this.persister.appendEvent(sessionId, event, session.app)
+      await this.persister.appendEvent(sessionId, event, session.app, session.workspace)
       this.emit("event", sessionId, event)
     }
 
@@ -329,18 +337,27 @@ export class ChatSessionManager extends EventEmitter {
       createdAt: session.createdAt,
       lastMessageAt: session.lastMessageAt,
       app: session.app,
+      workspace: session.workspace,
       systemPrompt: session.systemPrompt,
       allowedTools: session.allowedTools,
     }
   }
 
   /**
-   * List all sessions, optionally filtered by app.
-   * @param app If provided, only return sessions for this app.
+   * List all sessions, optionally filtered by app and/or workspace.
+   *
+   * **app** — if provided, only return sessions for this app.
+   * **workspace** — if provided, only return sessions for this workspace.
    */
-  listSessions(app?: string): SessionInfo[] {
+  listSessions(
+    /** Optional app namespace filter. */
+    app?: string,
+    /** Optional workspace identifier filter. */
+    workspace?: string,
+  ): SessionInfo[] {
     return Array.from(this.sessions.values())
       .filter(s => app === undefined || s.app === app)
+      .filter(s => workspace === undefined || s.workspace === workspace)
       .map(s => ({
         sessionId: s.sessionId,
         adapter: s.adapter,
@@ -349,6 +366,7 @@ export class ChatSessionManager extends EventEmitter {
         createdAt: s.createdAt,
         lastMessageAt: s.lastMessageAt,
         app: s.app,
+        workspace: s.workspace,
         systemPrompt: s.systemPrompt,
         allowedTools: s.allowedTools,
       }))
@@ -364,7 +382,7 @@ export class ChatSessionManager extends EventEmitter {
       await session.adapterInstance.stop()
     }
     this.sessions.delete(sessionId)
-    this.persister.deleteSession(sessionId, session?.app)
+    this.persister.deleteSession(sessionId, session?.app, session?.workspace)
   }
 
   /**
@@ -393,15 +411,19 @@ export class ChatSessionManager extends EventEmitter {
   /** Restore sessions from persisted JSONL files. */
   private restoreSessions(): void {
     const sessions = this.persister.listSessionsWithApp()
-    for (const { sessionId, app } of sessions) {
-      // Read creation event to get accurate metadata (pass app to find the file)
-      const metadata = this.persister.readSessionMetadata(sessionId, app)
+    for (const { sessionId, app, workspace } of sessions) {
+      // Read creation event to get accurate metadata
+      const metadata = this.persister.readSessionMetadata(sessionId, app, workspace)
+
+      // Derive workspace from cwd if not stored in the directory structure
+      const cwd = metadata?.cwd ?? this.defaultCwd
+      const resolvedWorkspace = workspace ?? getWorkspaceId({ workspacePath: cwd })
 
       this.sessions.set(sessionId, {
         sessionId,
         adapter: metadata?.adapter ?? "claude",
         status: "idle",
-        cwd: metadata?.cwd ?? this.defaultCwd,
+        cwd,
         createdAt: metadata?.createdAt ?? 0,
         adapterInstance: null,
         conversationContext: {
@@ -411,6 +433,7 @@ export class ChatSessionManager extends EventEmitter {
         },
         messageQueue: [],
         app,
+        workspace: resolvedWorkspace,
         systemPrompt: metadata?.systemPrompt,
         allowedTools: metadata?.allowedTools,
       })
@@ -440,6 +463,8 @@ interface SessionState {
   messageQueue: QueuedMessage[]
   /** App namespace for this session. */
   app?: string
+  /** Workspace identifier (e.g. "owner/repo") derived from cwd. */
+  workspace?: string
   /** System prompt stored at session creation. */
   systemPrompt?: string
   /** Allowed tools stored at session creation. */

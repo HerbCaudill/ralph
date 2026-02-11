@@ -262,20 +262,24 @@ describe("App-namespaced session storage", () => {
       expect(info).not.toBeNull()
       expect(info!.app).toBe("ralph")
 
-      // Verify file is in correct location
-      expect(existsSync(join(storageDir, "ralph", `${sessionId}.jsonl`))).toBe(true)
+      // Verify file exists via persister (path includes workspace derived from cwd)
+      const persister = manager.getPersister()
+      expect(persister.hasSession(sessionId, "ralph", info!.workspace)).toBe(true)
     })
 
-    it("creates sessions without app in root directory", async () => {
+    it("creates sessions without app in workspace directory", async () => {
       const manager = new ChatSessionManager({ storageDir })
       const { sessionId } = await manager.createSession({ adapter: "stub" })
 
       const info = manager.getSessionInfo(sessionId)
       expect(info).not.toBeNull()
       expect(info!.app).toBeUndefined()
+      // Workspace is always derived from cwd
+      expect(info!.workspace).toBeDefined()
 
-      // Verify file is in root location
-      expect(existsSync(join(storageDir, `${sessionId}.jsonl`))).toBe(true)
+      // Verify file exists via persister
+      const persister = manager.getPersister()
+      expect(persister.hasSession(sessionId, undefined, info!.workspace)).toBe(true)
     })
 
     it("lists sessions filtered by app", async () => {
@@ -315,11 +319,13 @@ describe("App-namespaced session storage", () => {
       const manager = new ChatSessionManager({ storageDir })
       const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
 
-      expect(existsSync(join(storageDir, "ralph", `${sessionId}.jsonl`))).toBe(true)
+      const info = manager.getSessionInfo(sessionId)!
+      const persister = manager.getPersister()
+      expect(persister.hasSession(sessionId, "ralph", info.workspace)).toBe(true)
 
       await manager.clearSession(sessionId)
 
-      expect(existsSync(join(storageDir, "ralph", `${sessionId}.jsonl`))).toBe(false)
+      expect(persister.hasSession(sessionId, "ralph", info.workspace)).toBe(false)
     })
   })
 
@@ -431,13 +437,13 @@ describe("App-namespaced session storage", () => {
       const res1 = await request(app, "GET", "/api/sessions/test-session/events")
       expect(res1.status).toBe(200)
       expect(res1.body.events).toHaveLength(2)
-      expect(readEvents).toHaveBeenCalledWith("test-session", "ralph")
+      expect(readEvents).toHaveBeenCalledWith("test-session", "ralph", undefined)
 
       // Test reading events since timestamp
       const res2 = await request(app, "GET", "/api/sessions/test-session/events?since=1500")
       expect(res2.status).toBe(200)
       expect(res2.body.events).toHaveLength(1)
-      expect(readEventsSince).toHaveBeenCalledWith("test-session", 1500, "ralph")
+      expect(readEventsSince).toHaveBeenCalledWith("test-session", 1500, "ralph", undefined)
     })
   })
 
@@ -452,31 +458,37 @@ describe("App-namespaced session storage", () => {
 
       // Create a session with app namespace
       const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
+      const sessionInfo = manager.getSessionInfo(sessionId)!
 
       // Manually append some events to simulate a session that was running
       await persister.appendEvent(
         sessionId,
         { type: "user_message", message: "Hello", timestamp: 1000 },
         "ralph",
+        sessionInfo.workspace,
       )
       await persister.appendEvent(
         sessionId,
         { type: "assistant_message", text: "Hi there!", timestamp: 2000 },
         "ralph",
+        sessionInfo.workspace,
       )
 
       // Simulate what the reconnect handler does: get session info and read events
-      const sessionInfo = manager.getSessionInfo(sessionId)
       expect(sessionInfo).not.toBeNull()
-      expect(sessionInfo!.app).toBe("ralph")
+      expect(sessionInfo.app).toBe("ralph")
 
       // The bug was: reconnect handler called readEvents(sessionId) without app
       // This would return empty array because the file is in ralph/ subdirectory
       const eventsWithoutApp = await persister.readEvents(sessionId)
       expect(eventsWithoutApp).toHaveLength(0) // Bug: events not found!
 
-      // The fix: pass the app parameter from session info
-      const eventsWithApp = await persister.readEvents(sessionId, sessionInfo!.app)
+      // The fix: pass the app and workspace parameters from session info
+      const eventsWithApp = await persister.readEvents(
+        sessionId,
+        sessionInfo.app,
+        sessionInfo.workspace,
+      )
       // Skip the session_created event (first event), we added 2 more
       expect(eventsWithApp.length).toBeGreaterThanOrEqual(2)
       expect(eventsWithApp.some(e => e.type === "user_message")).toBe(true)
@@ -521,18 +533,21 @@ describe("App-namespaced session storage", () => {
     it("reconnect should return events for app-namespaced sessions", async () => {
       // Create a session with app="ralph" and add some events
       const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
+      const info = manager.getSessionInfo(sessionId)!
 
-      // Simulate some events being persisted
+      // Simulate some events being persisted (must include workspace to match session storage)
       const persister = manager.getPersister()
       await persister.appendEvent(
         sessionId,
         { type: "user_message", message: "Hello", timestamp: 1000 },
         "ralph",
+        info.workspace,
       )
       await persister.appendEvent(
         sessionId,
         { type: "assistant_message", message: "Hi there!", timestamp: 2000 },
         "ralph",
+        info.workspace,
       )
 
       // Connect via WebSocket and send reconnect
@@ -576,8 +591,9 @@ describe("App-namespaced session storage", () => {
       // Create a session with app="ralph"
       const { sessionId } = await manager.createSession({ adapter: "stub", app: "ralph" })
 
-      // Verify the session exists with app namespace
-      expect(existsSync(join(storageDir, "ralph", `${sessionId}.jsonl`))).toBe(true)
+      // Verify the session exists
+      const info = manager.getSessionInfo(sessionId)
+      expect(manager.getPersister().hasSession(sessionId, "ralph", info?.workspace)).toBe(true)
 
       // Connect via WebSocket and send reconnect WITHOUT app info
       // This simulates the bug: client only sends sessionId, not app

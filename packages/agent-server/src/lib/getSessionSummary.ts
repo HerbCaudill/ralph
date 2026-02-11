@@ -20,8 +20,10 @@ export async function getSessionSummary(
   persister: SessionPersister,
   /** Optional app namespace for the session. */
   app?: string,
+  /** Optional workspace identifier for the session. */
+  workspace?: string,
 ): Promise<SessionSummary | null> {
-  const events = await persister.readEvents(sessionId, app)
+  const events = await persister.readEvents(sessionId, app, workspace)
   let taskId: string | undefined
   let firstUserMessage: string | undefined
 

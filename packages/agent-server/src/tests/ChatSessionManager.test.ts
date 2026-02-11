@@ -97,12 +97,13 @@ describe("ChatSessionManager", () => {
     it("persists user_message with `message` property, not `content`", async () => {
       const manager = new ChatSessionManager({ storageDir })
       const { sessionId } = await manager.createSession({ adapter: "stub" })
+      const info = manager.getSessionInfo(sessionId)!
 
       await manager.sendMessage(sessionId, "Hello world")
 
       // Read back the persisted events and find the user_message
       const persister = manager.getPersister()
-      const events = await persister.readEvents(sessionId)
+      const events = await persister.readEvents(sessionId, info.app, info.workspace)
       const userEvent = events.find(e => e.type === "user_message")
 
       expect(userEvent).toBeDefined()
@@ -113,12 +114,13 @@ describe("ChatSessionManager", () => {
     it("persists the correct message text for multiple messages", async () => {
       const manager = new ChatSessionManager({ storageDir })
       const { sessionId } = await manager.createSession({ adapter: "stub" })
+      const info = manager.getSessionInfo(sessionId)!
 
       await manager.sendMessage(sessionId, "First message")
       await manager.sendMessage(sessionId, "Second message")
 
       const persister = manager.getPersister()
-      const events = await persister.readEvents(sessionId)
+      const events = await persister.readEvents(sessionId, info.app, info.workspace)
       const userEvents = events.filter(e => e.type === "user_message")
 
       expect(userEvents).toHaveLength(2)
@@ -233,6 +235,7 @@ describe("ChatSessionManager", () => {
     it("queues messages sent while agent is processing", async () => {
       const manager = new ChatSessionManager({ storageDir })
       const { sessionId } = await manager.createSession({ adapter: "delayed-stub" })
+      const info = manager.getSessionInfo(sessionId)!
 
       // Start first message (takes 50ms to process)
       const firstPromise = manager.sendMessage(sessionId, "First message")
@@ -244,7 +247,7 @@ describe("ChatSessionManager", () => {
       await expect(Promise.all([firstPromise, secondPromise])).resolves.not.toThrow()
 
       // Verify both messages were persisted
-      const events = await manager.getPersister().readEvents(sessionId)
+      const events = await manager.getPersister().readEvents(sessionId, info.app, info.workspace)
       const userEvents = events.filter(e => e.type === "user_message")
       expect(userEvents).toHaveLength(2)
       expect(userEvents[0].message).toBe("First message")

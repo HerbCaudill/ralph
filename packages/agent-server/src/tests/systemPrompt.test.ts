@@ -91,8 +91,9 @@ describe("System Prompt Storage", () => {
         systemPrompt: "Test system prompt",
       })
 
+      const info = manager.getSessionInfo(sessionId)!
       const persister = manager.getPersister()
-      const events = await persister.readEvents(sessionId)
+      const events = await persister.readEvents(sessionId, info.app, info.workspace)
       const createdEvent = events.find(e => e.type === "session_created")
 
       expect(createdEvent).toBeDefined()
@@ -138,7 +139,8 @@ describe("System Prompt Storage", () => {
         allowedTools: ["Read", "Glob", "Bash"],
       })
 
-      const events = await manager.getPersister().readEvents(sessionId)
+      const info = manager.getSessionInfo(sessionId)!
+      const events = await manager.getPersister().readEvents(sessionId, info.app, info.workspace)
       const createdEvent = events.find(e => e.type === "session_created")
 
       expect(createdEvent).toBeDefined()

@@ -78,14 +78,15 @@ export function registerRoutes(
       const manager = ctx.getSessionManager()
       const persister = manager.getPersister()
 
-      // Get the session's app namespace so we can read from the correct directory
+      // Get the session's app/workspace so we can read from the correct directory
       const sessionInfo = manager.getSessionInfo(sessionId)
       const app = sessionInfo?.app
+      const workspace = sessionInfo?.workspace
 
       const events =
         since ?
-          await persister.readEventsSince(sessionId, since, app)
-        : await persister.readEvents(sessionId, app)
+          await persister.readEventsSince(sessionId, since, app, workspace)
+        : await persister.readEvents(sessionId, app, workspace)
 
       res.json({ events })
     } catch (err) {
@@ -125,7 +126,12 @@ export function registerRoutes(
       const persister = ctx.getSessionManager().getPersister()
       const sessionsWithSummary = await Promise.all(
         sessions.map(async session => {
-          const summary = await getSessionSummary(session.sessionId, persister, session.app)
+          const summary = await getSessionSummary(
+            session.sessionId,
+            persister,
+            session.app,
+            session.workspace,
+          )
           return summary ?
               {
                 ...session,
