@@ -357,8 +357,8 @@ describe("RalphLoopPanel", () => {
     })
   })
 
-  describe("loading state during initial connection", () => {
-    it("does not show empty state when connecting with no events", () => {
+  describe("idle state when no Ralph process is running", () => {
+    it("shows empty state when connecting with no events", () => {
       render(
         <RalphLoopPanel
           {...defaultProps}
@@ -367,11 +367,10 @@ describe("RalphLoopPanel", () => {
           connectionStatus="connecting"
         />,
       )
-      // Should NOT show "Ralph is not running" during initial connection
-      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
+      expect(screen.getByText("Ralph is not running")).toBeInTheDocument()
     })
 
-    it("shows loading indicator when connecting with no events", () => {
+    it("does not show loading indicator when connecting with no events", () => {
       render(
         <RalphLoopPanel
           {...defaultProps}
@@ -380,8 +379,7 @@ describe("RalphLoopPanel", () => {
           connectionStatus="connecting"
         />,
       )
-      // Should show a loading state during initial connection
-      expect(screen.getByText("Connecting...")).toBeInTheDocument()
+      expect(screen.queryByText("Connecting...")).not.toBeInTheDocument()
     })
 
     it("shows empty state once connected with no events", () => {

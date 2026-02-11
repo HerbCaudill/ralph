@@ -134,6 +134,7 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 - Zustand store uses multi-instance state via `instances: Map<string, RalphInstance>` with `activeInstanceId`; use selectors (e.g., `selectRalphStatus`, `selectEvents`)
 - IndexedDB (v8) stores: `sessions`, `events`, `chat_sessions`, `sync_state`. Event dedup uses `event.uuid` as key.
 - HMR preserves WebSocket state via `import.meta.hot.data`; no `<StrictMode>` wrapper
+- Ralph loop idle UI: when no events are present and `controlState` is `idle`, render the "Ralph is not running" empty state even if connection status is `connecting`.
 - Deprecated aliases (`ErrorEventData`, `UserMessageEvent`, etc.) exist — don't use in new code
 - In task chat, keep `New chat` enabled while a session is streaming so users can start a parallel chat; switching back restores streaming state from session status.
 
