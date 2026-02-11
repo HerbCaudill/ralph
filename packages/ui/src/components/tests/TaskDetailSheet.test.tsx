@@ -222,7 +222,7 @@ describe("TaskDetailSheet", () => {
       fireEvent.mouseDown(handle, { clientX: 480 })
 
       // Drag to new position (600px from left edge of sheet)
-      fireEvent.mouseMove(panel, { clientX: 600 })
+      fireEvent.mouseMove(document, { clientX: 600 })
 
       // Width should update to 600px
       expect(panel).toHaveStyle({ width: "600px" })
@@ -232,16 +232,15 @@ describe("TaskDetailSheet", () => {
       render(<TaskDetailSheet {...defaultProps} />)
 
       const handle = screen.getByTestId("issue-sheet-resize-handle")
-      const panel = screen.getByTestId("task-detail-sheet")
 
       // Start dragging
       fireEvent.mouseDown(handle, { clientX: 480 })
 
       // Drag to new position (600px)
-      fireEvent.mouseMove(panel, { clientX: 600 })
+      fireEvent.mouseMove(document, { clientX: 600 })
 
       // Release
-      fireEvent.mouseUp(panel)
+      fireEvent.mouseUp(document)
 
       // Store should be updated (600/1920 * 100 ≈ 31.25%)
       const { issueSheetWidthPercent } = useUiStore.getState()
@@ -258,7 +257,7 @@ describe("TaskDetailSheet", () => {
       fireEvent.mouseDown(handle, { clientX: 480 })
 
       // Try to drag below minimum (100px, below MIN_ISSUE_SHEET_WIDTH of 300px)
-      fireEvent.mouseMove(panel, { clientX: 100 })
+      fireEvent.mouseMove(document, { clientX: 100 })
 
       // Width should be constrained to minimum
       expect(panel).toHaveStyle({ width: "300px" })
@@ -274,10 +273,88 @@ describe("TaskDetailSheet", () => {
       fireEvent.mouseDown(handle, { clientX: 480 })
 
       // Try to drag beyond maximum (1500px, above MAX_ISSUE_SHEET_WIDTH_PERCENT of 60%)
-      fireEvent.mouseMove(panel, { clientX: 1500 })
+      fireEvent.mouseMove(document, { clientX: 1500 })
 
       // Width should be constrained to maximum (60% of 1920px = 1152px)
       expect(panel).toHaveStyle({ width: "1152px" })
+    })
+
+    it("continues resizing when mouse leaves the panel", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+      const panel = screen.getByTestId("task-detail-sheet")
+
+      // Initial width: 25% of 1920px = 480px
+      expect(panel).toHaveStyle({ width: "480px" })
+
+      // Start dragging
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      // Move mouse outside the panel (on document, not on panel)
+      fireEvent.mouseMove(document, { clientX: 700 })
+
+      // Width should still update even though mouse left the panel
+      expect(panel).toHaveStyle({ width: "700px" })
+    })
+
+    it("completes resize when mouseup occurs outside the panel", () => {
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+
+      // Start dragging
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      // Move mouse outside panel
+      fireEvent.mouseMove(document, { clientX: 700 })
+
+      // Release mouse outside panel (on document)
+      fireEvent.mouseUp(document)
+
+      // Store should be updated (700/1920 * 100 ≈ 36.46%)
+      const { issueSheetWidthPercent } = useUiStore.getState()
+      expect(issueSheetWidthPercent).toBeCloseTo(36.46, 0)
+    })
+
+    it("cleans up document event listeners after mouseup", () => {
+      const addSpy = vi.spyOn(document, "addEventListener")
+      const removeSpy = vi.spyOn(document, "removeEventListener")
+
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const handle = screen.getByTestId("issue-sheet-resize-handle")
+
+      // Start dragging - should add document listeners
+      fireEvent.mouseDown(handle, { clientX: 480 })
+
+      const mousemoveCalls = addSpy.mock.calls.filter(([type]) => type === "mousemove")
+      const mouseupCalls = addSpy.mock.calls.filter(([type]) => type === "mouseup")
+      expect(mousemoveCalls.length).toBeGreaterThanOrEqual(1)
+      expect(mouseupCalls.length).toBeGreaterThanOrEqual(1)
+
+      // Release - should remove document listeners
+      fireEvent.mouseUp(document)
+
+      const removeMoveCalls = removeSpy.mock.calls.filter(([type]) => type === "mousemove")
+      const removeUpCalls = removeSpy.mock.calls.filter(([type]) => type === "mouseup")
+      expect(removeMoveCalls.length).toBeGreaterThanOrEqual(1)
+      expect(removeUpCalls.length).toBeGreaterThanOrEqual(1)
+
+      addSpy.mockRestore()
+      removeSpy.mockRestore()
+    })
+
+    it("clamps stored width to valid bounds on load", () => {
+      // Set an out-of-bounds width (e.g. 90%, well above MAX of 60%)
+      useUiStore.setState({ issueSheetWidthPercent: 90 })
+
+      render(<TaskDetailSheet {...defaultProps} />)
+
+      const panel = screen.getByTestId("task-detail-sheet")
+      // Should be clamped to MAX (60% of 1920 = 1152px)
+      const width = parseInt(panel.style.width)
+      expect(width).toBeLessThanOrEqual(1152)
     })
 
     it("does not call onClose when clicking on resize handle", async () => {

@@ -12,12 +12,19 @@ import { cn } from "../lib/utils"
  */
 export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const issueSheetWidthPercent = useUiStore(state => state.issueSheetWidthPercent)
+  const rawIssueSheetWidthPercent = useUiStore(state => state.issueSheetWidthPercent)
   const setIssueSheetWidthPercent = useUiStore(state => state.setIssueSheetWidthPercent)
+
+  // Clamp stored width to valid bounds to prevent invalid widths from corrupted state
+  const issueSheetWidthPercent = clampPercent(rawIssueSheetWidthPercent)
 
   // Local state for dragging - we track pixels during drag for smoothness
   const [panelWidth, setPanelWidth] = useState(() => percentToPixels(issueSheetWidthPercent))
   const [isResizing, setIsResizing] = useState(false)
+
+  // Keep a ref to panelWidth so document-level handlers always see the latest value
+  const panelWidthRef = useRef(panelWidth)
+  panelWidthRef.current = panelWidth
 
   // Sync local state with store when store changes (e.g., on mount from localStorage)
   useEffect(() => {
@@ -33,32 +40,33 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
     return () => window.removeEventListener("resize", handleResize)
   }, [issueSheetWidthPercent])
 
-  const handleResizeMouseDown = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsResizing(true)
-  }, [])
-
-  const handleMouseMove = useCallback(
+  const handleResizeMouseDown = useCallback(
     (e: ReactMouseEvent) => {
-      if (!isResizing) return
-      // The resize handle is on the right edge, so we size based on clientX position
-      // relative to the left edge of the panel (which is at position 0 within its container)
-      const newWidth = Math.min(
-        Math.max(e.clientX, MIN_ISSUE_SHEET_WIDTH),
-        window.innerWidth * MAX_ISSUE_SHEET_WIDTH_PERCENT,
-      )
-      setPanelWidth(newWidth)
-    },
-    [isResizing],
-  )
+      e.preventDefault()
+      e.stopPropagation()
+      setIsResizing(true)
 
-  const handleMouseUp = useCallback(() => {
-    if (isResizing) {
-      setIssueSheetWidthPercent(pixelsToPercent(panelWidth))
-    }
-    setIsResizing(false)
-  }, [isResizing, panelWidth, setIssueSheetWidthPercent])
+      const handleMouseMove = (e: MouseEvent) => {
+        const newWidth = Math.min(
+          Math.max(e.clientX, MIN_ISSUE_SHEET_WIDTH),
+          window.innerWidth * MAX_ISSUE_SHEET_WIDTH_PERCENT,
+        )
+        setPanelWidth(newWidth)
+        panelWidthRef.current = newWidth
+      }
+
+      const handleMouseUp = () => {
+        setIssueSheetWidthPercent(pixelsToPercent(panelWidthRef.current))
+        setIsResizing(false)
+        document.removeEventListener("mousemove", handleMouseMove)
+        document.removeEventListener("mouseup", handleMouseUp)
+      }
+
+      document.addEventListener("mousemove", handleMouseMove)
+      document.addEventListener("mouseup", handleMouseUp)
+    },
+    [setIssueSheetWidthPercent],
+  )
 
   const handleSave = useCallback(
     async (id: string, updates: TaskUpdateData) => {
@@ -125,9 +133,6 @@ export function TaskDetailSheet({ task, open, onClose, onChanged }: TaskDetailSh
       className="animate-slide-out-right bg-background absolute top-0 left-0 h-full overflow-hidden border-r border-border shadow-lg"
       style={{ width: panelWidth }}
       onClick={e => e.stopPropagation()}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
     >
       <TaskDetailsController
         task={task}
@@ -154,6 +159,13 @@ const MIN_ISSUE_SHEET_WIDTH = 300
 
 /** Maximum width of the issue sheet as a percentage of viewport (0.0-1.0). */
 const MAX_ISSUE_SHEET_WIDTH_PERCENT = 0.6
+
+/** Clamp a percentage value to the valid range for the issue sheet width. */
+function clampPercent(percent: number): number {
+  const minPercent = (MIN_ISSUE_SHEET_WIDTH / window.innerWidth) * 100
+  const maxPercent = MAX_ISSUE_SHEET_WIDTH_PERCENT * 100
+  return Math.min(Math.max(percent, minPercent), maxPercent)
+}
 
 /** Convert percentage to pixels based on current viewport width. */
 function percentToPixels(percent: number): number {
