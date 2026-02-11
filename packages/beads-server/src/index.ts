@@ -674,9 +674,6 @@ export async function startServer(config: BeadsServerConfig): Promise<Server> {
   // Start mutation polling if enabled
   if (config.enableMutationPolling !== false) {
     startMutationPolling(config.mutationPollingInterval)
-    console.log(
-      `[beads-server] Mutation polling enabled (interval: ${config.mutationPollingInterval ?? 1000}ms)`,
-    )
   }
 
   const app = createApp(config)
