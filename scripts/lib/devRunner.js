@@ -22,12 +22,15 @@ process.stderr.setMaxListeners(30)
  */
 const TSC_WATCH_NOISE = /^\s*\d+:\d+:\d+ [AP]M - (Starting compilation|Found 0 errors)/
 
-/** Create a transform stream that filters out tsc --watch noise lines. */
+/** Escape sequences tsc --watch uses to clear the screen. */
+const CLEAR_SCREEN_CODES = /\x1Bc|\x1B\[2J\x1B\[H|\x1B\[2J|\x1B\[H/g
+
+/** Create a transform stream that filters out tsc --watch noise and screen clears. */
 function createTscNoiseFilter() {
   let buffer = ""
   return new Transform({
     transform(chunk, _encoding, callback) {
-      buffer += chunk.toString()
+      buffer += chunk.toString().replace(CLEAR_SCREEN_CODES, "")
       const lines = buffer.split("\n")
       // Keep the last partial line in the buffer
       buffer = lines.pop() ?? ""
@@ -249,16 +252,7 @@ export async function runDev(
 
   // Start frontend
   if (frontend) {
-    const uiArgs = [
-      "--filter",
-      frontend.package,
-      "exec",
-      "vite",
-      "--port",
-      String(ports._frontend),
-      "--clearScreen",
-      "false",
-    ]
+    const uiArgs = ["--filter", frontend.package, "exec", "vite", "--port", String(ports._frontend)]
     if (frontend.open && !process.env.RALPH_NO_OPEN) {
       uiArgs.push("--open")
     }
