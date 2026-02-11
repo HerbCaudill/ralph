@@ -96,30 +96,39 @@ describe("SessionPicker", () => {
   describe("dropdown", () => {
     it("should not show dropdown by default", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
       })
-      expect(screen.queryByText("r-abc12")).toBeNull()
+      // The task ID appears in the trigger button but not in the dropdown (which is closed)
+      // We verify the dropdown is closed by checking that the dropdown content container is absent
+      const button = screen.getByRole("button")
+      expect(button.textContent).toContain("r-abc12")
+      // Only one element with this text (the trigger), not two (trigger + dropdown)
+      expect(screen.getAllByText("r-abc12")).toHaveLength(1)
     })
 
     it("should show dropdown when trigger is clicked", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
       // No "Recent Sessions" heading - removed per requirement
       expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
 
     it("should not display Recent Sessions heading in dropdown", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
       expect(screen.queryByText("Recent Sessions")).toBeNull()
     })
 
     it("should display task ID and title in dropdown items", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [
           makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "Fix the login bug" }),
           makeSession({
@@ -130,17 +139,18 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
-      // Should show task IDs
-      expect(screen.getByText("r-abc12")).toBeDefined()
+      fireEvent.click(screen.getByRole("button"))
+      // Should show task IDs (r-abc12 appears in both trigger and dropdown)
+      expect(screen.getAllByText("r-abc12").length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText("r-def34")).toBeDefined()
       // Should show task titles
-      expect(screen.getByText("Fix the login bug")).toBeDefined()
+      expect(screen.getAllByText("Fix the login bug").length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText("Update documentation")).toBeDefined()
     })
 
     it("should not display relative time for sessions", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [
           makeSession({
             sessionId: "s1",
@@ -156,7 +166,7 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
       // No timestamps should be displayed
       expect(screen.queryByText("5 minutes ago")).toBeNull()
       expect(screen.queryByText("1 hour ago")).toBeNull()
@@ -180,47 +190,25 @@ describe("SessionPicker", () => {
       expect(screen.getByText("No task")).toBeDefined()
     })
 
-    it("should use props taskId/taskTitle for current session dropdown item when session data is missing", () => {
-      renderPicker({
-        currentSessionId: "s1",
-        taskId: "r-xyz99",
-        taskTitle: "Fix auth bug",
-        sessions: [
-          makeSession({ sessionId: "s1" }), // no taskId/taskTitle in session data
-          makeSession({
-            sessionId: "s2",
-            taskId: "r-def34",
-            taskTitle: "Other session",
-            lastMessageAt: Date.now() - 60 * 60 * 1000,
-          }),
-        ],
-      })
-      fireEvent.click(screen.getByRole("button"))
-      // The current session (s1) dropdown item should NOT show "No task"
-      expect(screen.queryByText("No task")).toBeNull()
-      // The current session dropdown item should show the task info from props
-      // There should be two occurrences of the task ID (trigger + dropdown item)
-      expect(screen.getAllByText("r-xyz99")).toHaveLength(2)
-      expect(screen.getAllByText("Fix auth bug")).toHaveLength(2)
-      // The other session should still show its own data
-      expect(screen.getByText("r-def34")).toBeDefined()
-    })
-
     it("should toggle closed when trigger is clicked again", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
       })
-      const trigger = screen.getByTitle("Session history")
+      const trigger = screen.getByRole("button")
       fireEvent.click(trigger)
-      expect(screen.getByText("r-abc12")).toBeDefined()
+      // When open, task ID appears in both trigger and dropdown
+      expect(screen.getAllByText("r-abc12").length).toBeGreaterThanOrEqual(2)
       fireEvent.click(trigger)
-      expect(screen.queryByText("r-abc12")).toBeNull()
+      // When closed, task ID only appears in the trigger
+      expect(screen.getAllByText("r-abc12")).toHaveLength(1)
     })
   })
 
   describe("session selection", () => {
     it("should call onSelectSession when a session row is clicked", () => {
       const { props } = renderPicker({
+        currentSessionId: "s1",
         sessions: [
           makeSession({
             sessionId: "s1",
@@ -235,13 +223,14 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
       fireEvent.click(screen.getByText("Second session"))
       expect(props.onSelectSession).toHaveBeenCalledWith("s2")
     })
 
     it("should close the dropdown after selecting a session", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [
           makeSession({
             sessionId: "s1",
@@ -256,10 +245,10 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
       fireEvent.click(screen.getByText("Second session"))
-      // Dropdown should be closed - task ID should no longer be visible
-      expect(screen.queryByText("r-abc12")).toBeNull()
+      // Dropdown should be closed - task ID should only appear in the trigger now
+      expect(screen.getAllByText("r-abc12")).toHaveLength(1)
     })
   })
 
@@ -281,15 +270,17 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
 
-      // The current session row should contain an SVG (the IconCheck)
-      const sessionButtons = screen
+      // The current session dropdown row should contain an IconCheck SVG.
+      // Filter to dropdown rows only (exclude the trigger button which also has task text).
+      const dropdownButtons = screen
         .getAllByRole("button")
-        .filter(b => b.textContent?.includes("First session"))
-      expect(sessionButtons).toHaveLength(1)
+        .filter(b => b.classList.contains("hover:bg-muted"))
+      const firstSessionRow = dropdownButtons.find(b => b.textContent?.includes("First session"))
+      expect(firstSessionRow).toBeDefined()
 
-      const svg = sessionButtons[0].querySelector("svg")
+      const svg = firstSessionRow!.querySelector("svg")
       expect(svg).not.toBeNull()
     })
 
@@ -310,7 +301,7 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
 
       const sessionButtons = screen
         .getAllByRole("button")
@@ -325,21 +316,26 @@ describe("SessionPicker", () => {
   describe("closing behavior", () => {
     it("should close on Escape key", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("r-abc12")).toBeDefined()
+      fireEvent.click(screen.getByRole("button"))
+      // When open, task ID appears in both trigger and dropdown
+      expect(screen.getAllByText("r-abc12").length).toBeGreaterThanOrEqual(2)
 
       fireEvent.keyDown(document, { key: "Escape" })
-      expect(screen.queryByText("r-abc12")).toBeNull()
+      // When closed, task ID only in trigger
+      expect(screen.getAllByText("r-abc12")).toHaveLength(1)
     })
 
     it("should close on outside click", async () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "First session" })],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
-      expect(screen.getByText("r-abc12")).toBeDefined()
+      fireEvent.click(screen.getByRole("button"))
+      // When open, task ID appears in both trigger and dropdown
+      expect(screen.getAllByText("r-abc12").length).toBeGreaterThanOrEqual(2)
 
       // Radix DismissableLayer registers its pointerdown listener via setTimeout(0),
       // so we need to flush that timer before dispatching the event
@@ -348,45 +344,55 @@ describe("SessionPicker", () => {
       })
 
       fireEvent.pointerDown(document.body)
-      expect(screen.queryByText("r-abc12")).toBeNull()
+      // When closed, task ID only in trigger
+      expect(screen.getAllByText("r-abc12")).toHaveLength(1)
     })
   })
 
   describe("task info display", () => {
-    it("should display task ID and title when provided", () => {
-      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+    it("should display task ID and title in trigger when current session has task data", () => {
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-abc99", taskTitle: "Fix authentication bug" }),
+        ],
+      })
       const button = screen.getByRole("button")
       expect(button.textContent).toContain("r-abc99")
       expect(button.textContent).toContain("Fix authentication bug")
     })
 
-    it("should display only task ID when title is not provided", () => {
-      renderPicker({ taskId: "r-abc99" })
-      const button = screen.getByRole("button")
-      expect(button.textContent).toContain("r-abc99")
-    })
-
-    it("should show history icon only when no task info is provided", () => {
+    it("should show history icon only when current session has no task info", () => {
       renderPicker()
       const button = screen.getByRole("button")
       // Button should only contain the icon (no text content)
       expect(button.textContent?.trim()).toBe("")
     })
 
-    it("should use sm size when task info is provided", () => {
-      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+    it("should use sm size when current session has task info", () => {
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-abc99", taskTitle: "Fix authentication bug" }),
+        ],
+      })
       const button = screen.getByRole("button")
       expect(button.getAttribute("data-size")).toBe("sm")
     })
 
-    it("should use icon-sm size when no task info is provided", () => {
+    it("should use icon-sm size when current session has no task info", () => {
       renderPicker()
       const button = screen.getByRole("button")
       expect(button.getAttribute("data-size")).toBe("icon-sm")
     })
 
     it("should use white at 75% opacity on hover for task ID and caret icon", () => {
-      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-abc99", taskTitle: "Fix authentication bug" }),
+        ],
+      })
       const button = screen.getByRole("button")
 
       // The button should have "group" class for group-hover to work
@@ -406,7 +412,12 @@ describe("SessionPicker", () => {
     })
 
     it("should not constrain task title width with max-w-48", () => {
-      renderPicker({ taskId: "r-abc99", taskTitle: "Fix authentication bug" })
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-abc99", taskTitle: "Fix authentication bug" }),
+        ],
+      })
       const button = screen.getByRole("button")
       // Find the task title span (contains the title text, not the task ID)
       const titleSpan = Array.from(button.querySelectorAll("span")).find(span =>
@@ -422,6 +433,7 @@ describe("SessionPicker", () => {
   describe("active session indicator", () => {
     it("should show a spinner for active sessions", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [
           makeSession({
             sessionId: "s1",
@@ -437,12 +449,15 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
 
-      // Find the active session row
-      const activeSessionButton = screen
+      // Find the active session dropdown row (exclude trigger by filtering to dropdown rows)
+      const dropdownButtons = screen
         .getAllByRole("button")
-        .find(b => b.textContent?.includes("Active session"))
+        .filter(b => b.classList.contains("hover:bg-muted"))
+      const activeSessionButton = dropdownButtons.find(b =>
+        b.textContent?.includes("Active session"),
+      )
       expect(activeSessionButton).toBeDefined()
 
       // Should have a spinner element (IconLoader2 with animate-spin)
@@ -498,6 +513,7 @@ describe("SessionPicker", () => {
 
     it("should indent inactive sessions so task IDs align with active sessions", () => {
       renderPicker({
+        currentSessionId: "s1",
         sessions: [
           makeSession({
             sessionId: "s1",
@@ -514,7 +530,7 @@ describe("SessionPicker", () => {
           }),
         ],
       })
-      fireEvent.click(screen.getByTitle("Session history"))
+      fireEvent.click(screen.getByRole("button"))
 
       // Find the inactive session row
       const inactiveSessionButton = screen
@@ -525,6 +541,69 @@ describe("SessionPicker", () => {
       // Should have a spacer element for alignment
       const spacer = inactiveSessionButton?.querySelector('[data-testid="spacer"]')
       expect(spacer).not.toBeNull()
+    })
+  })
+
+  describe("session data as single source of truth", () => {
+    it("should show trigger button task info from session data", () => {
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-abc12", taskTitle: "Task from session data" }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-def34",
+            taskTitle: "Other session",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      const button = screen.getByRole("button")
+      expect(button.textContent).toContain("r-abc12")
+      expect(button.textContent).toContain("Task from session data")
+    })
+
+    it("should always show each session's own task info in the dropdown", () => {
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-live1", taskTitle: "Live task" }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-hist2",
+            taskTitle: "Historical task",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByRole("button"))
+
+      // Live session (s1) should show its own task info from session data
+      expect(screen.getAllByText("r-live1").length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText("Live task").length).toBeGreaterThanOrEqual(1)
+
+      // Historical session should show its own task info
+      expect(screen.getByText("r-hist2")).toBeDefined()
+      expect(screen.getByText("Historical task")).toBeDefined()
+    })
+
+    it("should not show 'No task' when all sessions have task data", () => {
+      renderPicker({
+        currentSessionId: "s1",
+        sessions: [
+          makeSession({ sessionId: "s1", taskId: "r-live1", taskTitle: "Live task" }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-hist2",
+            taskTitle: "Historical task",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByRole("button"))
+
+      // Should NOT show "No task" anywhere - both sessions have task data
+      expect(screen.queryByText("No task")).toBeNull()
     })
   })
 })

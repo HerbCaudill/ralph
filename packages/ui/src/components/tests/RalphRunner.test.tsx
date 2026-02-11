@@ -21,22 +21,27 @@ vi.mock("@herbcaudill/agent-view", () => ({
   ChatInput: ({ disabled, placeholder }: any) => (
     <input data-testid="chat-input" disabled={disabled} placeholder={placeholder} />
   ),
-  SessionPicker: ({ sessions, currentSessionId, disabled, taskId, taskTitle }: any) => (
-    <button
-      data-testid="session-picker"
-      title={sessions?.length > 0 ? "Session history" : "No previous sessions"}
-      disabled={disabled || !sessions?.length}
-      data-session-count={sessions?.length ?? 0}
-      data-current-session={currentSessionId ?? ""}
-    >
-      {taskId ?
-        <>
-          <span>{taskId}</span>
-          {taskTitle && <span>{taskTitle}</span>}
-        </>
-      : "Sessions"}
-    </button>
-  ),
+  SessionPicker: ({ sessions, currentSessionId, disabled }: any) => {
+    const currentSession = sessions?.find((s: any) => s.sessionId === currentSessionId)
+    const taskId = currentSession?.taskId
+    const taskTitle = currentSession?.taskTitle
+    return (
+      <button
+        data-testid="session-picker"
+        title={sessions?.length > 0 ? "Session history" : "No previous sessions"}
+        disabled={disabled || !sessions?.length}
+        data-session-count={sessions?.length ?? 0}
+        data-current-session={currentSessionId ?? ""}
+      >
+        {taskId ?
+          <>
+            <span>{taskId}</span>
+            {taskTitle && <span>{taskTitle}</span>}
+          </>
+        : "Sessions"}
+      </button>
+    )
+  },
   useTokenUsage: () => ({ input: 1000, output: 500 }),
   useContextWindow: () => ({ used: 50000, max: 200000 }),
   TokenUsageDisplay: ({ tokenUsage }: any) => (
@@ -115,17 +120,22 @@ describe("RalphRunner", () => {
       expect(header).not.toHaveTextContent("Ralph")
     })
 
-    it("shows task ID and title in SessionPicker when provided", () => {
-      render(<RalphRunner {...defaultProps} taskId="r-abc123" taskTitle="Fix the login bug" />)
+    it("shows task ID and title in SessionPicker from session data", () => {
+      const sessions: SessionIndexEntry[] = [
+        {
+          sessionId: "session-1",
+          adapter: "claude",
+          firstMessageAt: Date.now(),
+          lastMessageAt: Date.now(),
+          firstUserMessage: "",
+          taskId: "r-abc123",
+          taskTitle: "Fix the login bug",
+        } as any,
+      ]
+      render(<RalphRunner {...defaultProps} sessions={sessions} sessionId="session-1" />)
       const sessionPicker = screen.getByTestId("session-picker")
       expect(sessionPicker).toHaveTextContent("r-abc123")
       expect(sessionPicker).toHaveTextContent("Fix the login bug")
-    })
-
-    it("shows task ID in SessionPicker without title when title is not available", () => {
-      render(<RalphRunner {...defaultProps} taskId="r-abc123" />)
-      const sessionPicker = screen.getByTestId("session-picker")
-      expect(sessionPicker).toHaveTextContent("r-abc123")
     })
 
     it("does not show task info in SessionPicker when no task is running", () => {

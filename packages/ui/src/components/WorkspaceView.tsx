@@ -37,7 +37,6 @@ import {
   type ChatInputHandle,
 } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
-import { useCurrentTask } from "@/hooks/useCurrentTask"
 import { useWorkerName } from "@/hooks/useWorkerName"
 import { useWorkerOrchestrator } from "@/hooks/useWorkerOrchestrator"
 import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
@@ -167,9 +166,6 @@ export function WorkspaceView() {
       store.setInitialTaskCount(null)
     }
   }, [controlState, tasks.length])
-
-  // Current task from Ralph events (resolved against the tasks list)
-  const { taskId: currentTaskId, taskTitle: currentTaskTitle } = useCurrentTask(events, tasks)
 
   // Active worker name from Ralph events
   const workerName = useWorkerName(events)
@@ -448,8 +444,6 @@ export function WorkspaceView() {
       sessions={sessions}
       sessionId={viewedSessionId}
       isViewingHistoricalSession={isViewingHistorical}
-      taskId={currentTaskId}
-      taskTitle={currentTaskTitle}
       workerName={workerName}
       context={{
         toolOutput: toolOutputContext,

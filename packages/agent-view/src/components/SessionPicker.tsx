@@ -16,16 +16,15 @@ export interface SessionPickerEntry extends SessionIndexEntry {
  * Each row shows the task ID and title (like the trigger button format).
  * Clicking a row restores that session.
  *
- * When taskId is provided, the trigger button displays the task ID and title
- * instead of just the history icon, allowing users to see the current task at a glance.
+ * Task info (taskId/taskTitle) comes from session data for all sessions,
+ * including the current one. This ensures the dropdown always shows correct
+ * task info regardless of which session is being viewed.
  */
 export function SessionPicker({
   sessions,
   currentSessionId,
   onSelectSession,
   disabled = false,
-  taskId,
-  taskTitle,
 }: SessionPickerProps) {
   const [open, setOpen] = useState(false)
 
@@ -38,7 +37,12 @@ export function SessionPicker({
   )
 
   const hasSessions = sessions.length > 0
-  const hasTaskInfo = Boolean(taskId)
+
+  // Derive trigger button task info from the current session's data
+  const currentSession = sessions.find(s => s.sessionId === currentSessionId)
+  const triggerTaskId = currentSession?.taskId
+  const triggerTaskTitle = currentSession?.taskTitle
+  const hasTaskInfo = Boolean(triggerTaskId)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -52,9 +56,11 @@ export function SessionPicker({
             className="group min-w-0 gap-2"
           >
             <span className="shrink-0 text-xs font-medium text-muted-foreground group-hover:text-white/75">
-              {taskId}
+              {triggerTaskId}
             </span>
-            {taskTitle && <span className="min-w-0 truncate text-sm font-medium">{taskTitle}</span>}
+            {triggerTaskTitle && (
+              <span className="min-w-0 truncate text-sm font-medium">{triggerTaskTitle}</span>
+            )}
             <IconChevronDown
               size={14}
               stroke={1.5}
@@ -77,9 +83,6 @@ export function SessionPicker({
           {sessions.map(session => {
             const isCurrentSession = session.sessionId === currentSessionId
             const isWorkerActive = session.isActive === true
-            const sessionTaskId = isCurrentSession ? (taskId ?? session.taskId) : session.taskId
-            const sessionTaskTitle =
-              isCurrentSession ? (taskTitle ?? session.taskTitle) : session.taskTitle
             return (
               <button
                 key={session.sessionId}
@@ -97,14 +100,14 @@ export function SessionPicker({
                   />
                 : <span data-testid="spacer" className="w-3.5 shrink-0" />}
                 {/* Task ID (muted) + Task title, like the trigger button format */}
-                {sessionTaskId ?
+                {session.taskId ?
                   <>
                     <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                      {sessionTaskId}
+                      {session.taskId}
                     </span>
-                    {sessionTaskTitle && (
+                    {session.taskTitle && (
                       <span className="min-w-0 flex-1 truncate font-medium">
-                        {sessionTaskTitle}
+                        {session.taskTitle}
                       </span>
                     )}
                   </>
@@ -134,8 +137,4 @@ export interface SessionPickerProps {
   onSelectSession: (sessionId: string) => void
   /** Disable interaction (e.g. while streaming). */
   disabled?: boolean
-  /** Current task ID to display in the button (e.g., "r-abc99"). */
-  taskId?: string | null
-  /** Title of the current task being worked on. */
-  taskTitle?: string | null
 }

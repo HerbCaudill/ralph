@@ -31,8 +31,6 @@ export function RalphRunner({
   isStoppingAfterCurrent = false,
   sessions = [],
   sessionId,
-  taskId,
-  taskTitle,
   workerName,
   isViewingHistoricalSession = false,
   context,
@@ -73,8 +71,6 @@ export function RalphRunner({
           sessions={sessions}
           currentSessionId={sessionId}
           onSelectSession={onSelectSession ?? (() => {})}
-          taskId={taskId}
-          taskTitle={taskTitle}
         />
       </div>
     </div>
@@ -194,10 +190,6 @@ export type RalphRunnerProps = {
   sessions?: SessionIndexEntry[]
   /** Current session ID. */
   sessionId?: string | null
-  /** Current task ID being worked on (from task lifecycle events). */
-  taskId?: string | null
-  /** Title of the current task being worked on. */
-  taskTitle?: string | null
   /** Name of the active worker (e.g., "Homer", "Ralph"). */
   workerName?: string | null
   /** Whether viewing a historical session (not the current active one). */
