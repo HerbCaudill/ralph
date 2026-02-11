@@ -255,6 +255,7 @@ export function WorkspaceView() {
   // Handle task chat new session
   const handleTaskChatNewSession = useCallback(() => {
     taskChatActions.newSession()
+    taskChatInputRef.current?.focus()
   }, [taskChatActions])
 
   // Start Ralph hotkey handler
@@ -378,6 +379,7 @@ export function WorkspaceView() {
       onSessionSelect={handleTaskChatSessionSelect}
       onNewSession={handleTaskChatNewSession}
       onClose={closeDialog}
+      inputRef={taskChatInputRef}
     />
   )
 

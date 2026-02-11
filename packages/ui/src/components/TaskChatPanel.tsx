@@ -5,7 +5,9 @@ import type {
   ChatEvent,
   AgentViewToolOutputControl,
   SessionIndexEntry,
+  ChatInputHandle,
 } from "@herbcaudill/agent-view"
+import type { RefObject } from "react"
 
 /**
  * Side panel for task-focused chat with the agent.
@@ -23,6 +25,7 @@ export function TaskChatPanel({
   onSessionSelect,
   onNewSession,
   onClose,
+  inputRef,
 }: TaskChatPanelProps) {
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -88,6 +91,7 @@ export function TaskChatPanel({
       {/* Chat input - outside AgentView (ChatInput has its own border-t) */}
       <div className="shrink-0">
         <ChatInput
+          ref={inputRef}
           onSend={onSendMessage}
           disabled={false}
           placeholder={taskId ? "Ask about this task" : "Send a message"}
@@ -121,4 +125,6 @@ export type TaskChatPanelProps = {
   onNewSession: () => void
   /** Callback to close the panel. */
   onClose: () => void
+  /** Ref to focus the task chat input. */
+  inputRef?: RefObject<ChatInputHandle | null>
 }

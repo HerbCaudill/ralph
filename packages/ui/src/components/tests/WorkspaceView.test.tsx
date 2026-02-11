@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { render, screen, fireEvent } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { WorkspaceView } from "../WorkspaceView"
 import type { ChatEvent } from "@herbcaudill/agent-view"
@@ -52,6 +52,10 @@ const mockStopWorker = vi.fn()
 
 // Mock URL session ID (can be mutated per-test)
 let mockUrlSessionId: string | undefined = undefined
+const mockTaskChatSendMessage = vi.fn()
+const mockTaskChatRestoreSession = vi.fn()
+const mockTaskChatNewSession = vi.fn()
+const mockTaskChatInputFocus = vi.fn()
 
 // Track navigate calls
 const mockNavigate = vi.fn()
@@ -122,7 +126,11 @@ vi.mock("../../hooks/useWorkerOrchestrator", () => ({
 vi.mock("../../hooks/useTaskChat", () => ({
   useTaskChat: () => ({
     state: { events: [], isStreaming: false, sessionId: null },
-    actions: { sendMessage: vi.fn(), restoreSession: vi.fn(), newSession: vi.fn() },
+    actions: {
+      sendMessage: mockTaskChatSendMessage,
+      restoreSession: mockTaskChatRestoreSession,
+      newSession: mockTaskChatNewSession,
+    },
   }),
 }))
 
@@ -239,7 +247,23 @@ vi.mock("../TaskDetailSheet", () => ({
 }))
 
 vi.mock("../TaskChatPanel", () => ({
-  TaskChatPanel: () => <div data-testid="task-chat-panel">Chat</div>,
+  TaskChatPanel: ({
+    onNewSession,
+    inputRef,
+  }: {
+    onNewSession: () => void
+    inputRef?: { current: { focus: () => void } | null }
+  }) => {
+    if (inputRef) {
+      inputRef.current = { focus: mockTaskChatInputFocus }
+    }
+    return (
+      <div data-testid="task-chat-panel">
+        Chat
+        <button onClick={onNewSession}>New task chat session</button>
+      </div>
+    )
+  },
 }))
 
 // Capture the props passed to Header so we can assert on them
@@ -417,6 +441,17 @@ describe("WorkspaceView session history wiring", () => {
 
       expect(mockSelectSession).toHaveBeenCalledWith("old-session-2")
       expect(mockClearHistorical).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("task chat new session", () => {
+    it("starts a new task chat session and focuses the task chat input", () => {
+      renderWorkspaceView()
+
+      fireEvent.click(screen.getByRole("button", { name: "New task chat session" }))
+
+      expect(mockTaskChatNewSession).toHaveBeenCalledTimes(1)
+      expect(mockTaskChatInputFocus).toHaveBeenCalledTimes(1)
     })
   })
 })

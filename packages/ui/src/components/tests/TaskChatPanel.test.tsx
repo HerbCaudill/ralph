@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { createRef, forwardRef, useImperativeHandle } from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
 import { TaskChatPanel } from "../TaskChatPanel"
-import type { ChatEvent, SessionIndexEntry } from "@herbcaudill/agent-view"
+import type { ChatEvent, SessionIndexEntry, ChatInputHandle } from "@herbcaudill/agent-view"
 
 // Mock Button component from @herbcaudill/components
 vi.mock("@herbcaudill/components", () => ({
@@ -67,20 +68,26 @@ vi.mock("@herbcaudill/agent-view", () => ({
       </select>
     </div>
   ),
-  ChatInput: ({ onSend, disabled, placeholder }: any) => (
-    <div data-testid="chat-input">
-      <input
-        data-testid="chat-input-field"
-        placeholder={placeholder}
-        disabled={disabled}
-        onKeyDown={e => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            onSend((e.target as HTMLInputElement).value)
-          }
-        }}
-      />
-    </div>
-  ),
+  ChatInput: forwardRef<ChatInputHandle, any>(function MockChatInput(
+    { onSend, disabled, placeholder }: any,
+    ref,
+  ) {
+    useImperativeHandle(ref, () => ({ focus: vi.fn() }))
+    return (
+      <div data-testid="chat-input">
+        <input
+          data-testid="chat-input-field"
+          placeholder={placeholder}
+          disabled={disabled}
+          onKeyDown={e => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              onSend((e.target as HTMLInputElement).value)
+            }
+          }}
+        />
+      </div>
+    )
+  }),
   listSessions: () => [],
 }))
 
@@ -218,6 +225,15 @@ describe("TaskChatPanel", () => {
 
       const input = screen.getByTestId("chat-input-field")
       expect(input).not.toBeDisabled()
+    })
+
+    it("forwards inputRef to ChatInput", () => {
+      const inputRef = createRef<ChatInputHandle>()
+
+      render(<TaskChatPanel {...defaultProps} inputRef={inputRef} />)
+
+      expect(inputRef.current).not.toBeNull()
+      expect(typeof inputRef.current?.focus).toBe("function")
     })
   })
 
