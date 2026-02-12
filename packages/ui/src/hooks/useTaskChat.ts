@@ -18,6 +18,7 @@ export function useTaskChat(
     systemPrompt: MANAGE_TASKS_SYSTEM_PROMPT,
     storageKey,
     app: "task-chat",
+    workspace: null, // Don't derive workspace for task-chat sessions
     allowedTools: [...TASK_CHAT_ALLOWED_TOOLS],
   })
 

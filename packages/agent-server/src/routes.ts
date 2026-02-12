@@ -26,16 +26,17 @@ export function registerRoutes(
   // Create a new session
   app.post("/api/sessions", async (req: Request, res: Response) => {
     try {
-      const { adapter, cwd, app, systemPrompt, allowedTools } = req.body as {
+      const { adapter, cwd, app, workspace, systemPrompt, allowedTools } = req.body as {
         adapter?: string
         cwd?: string
         app?: string
+        workspace?: string | null
         systemPrompt?: string
         allowedTools?: string[]
       }
       const result = await ctx
         .getSessionManager()
-        .createSession({ adapter, cwd, app, systemPrompt, allowedTools })
+        .createSession({ adapter, cwd, app, workspace, systemPrompt, allowedTools })
       res.status(201).json(result)
     } catch (err) {
       res.status(400).json({ error: (err as Error).message })

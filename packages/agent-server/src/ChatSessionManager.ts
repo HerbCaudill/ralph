@@ -43,6 +43,8 @@ export interface CreateSessionOptions {
   cwd?: string
   /** App namespace for the session (e.g., "ralph", "task-chat"). */
   app?: string
+  /** Workspace identifier (e.g., "owner/repo"). If not provided, auto-derived from cwd. Pass null to explicitly prevent workspace derivation. */
+  workspace?: string | null
   /** System prompt to store with the session (used as default for all messages). */
   systemPrompt?: string
   /** Allowed tools for the session. */
@@ -125,7 +127,11 @@ export class ChatSessionManager extends EventEmitter {
 
     const sessionId = generateId()
     const cwd = options.cwd ?? this.defaultCwd
-    const workspace = getWorkspaceId({ workspacePath: cwd })
+    // Allow explicit workspace override: undefined = auto-derive, null = don't set workspace, string = use as-is
+    const workspace =
+      options.workspace === null ? undefined
+      : options.workspace !== undefined ? options.workspace
+      : getWorkspaceId({ workspacePath: cwd })
     const session: SessionState = {
       sessionId,
       adapter,

@@ -274,7 +274,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
     let isResume = false
 
     if (this.storageDir) {
-      const incompleteSessionId = findIncompleteSession(taskId, this.app, this.storageDir)
+      const incompleteSessionId = findIncompleteSession(taskId, workerName, this.storageDir)
       if (incompleteSessionId) {
         // Verify the session exists in the session manager
         const existingSession = this.sessionManager.getSessionInfo(incompleteSessionId)
@@ -285,7 +285,8 @@ export class WorkerOrchestratorManager extends EventEmitter {
           // Session file exists but not loaded in manager - create new session
           const result = await this.sessionManager.createSession({
             cwd,
-            app: this.app,
+            app: workerName,
+            workspace: null, // Don't derive workspace from worktree path
           })
           sessionId = result.sessionId
         }
@@ -293,7 +294,8 @@ export class WorkerOrchestratorManager extends EventEmitter {
         // No incomplete session - create new
         const result = await this.sessionManager.createSession({
           cwd,
-          app: this.app,
+          app: workerName,
+          workspace: null, // Don't derive workspace from worktree path
         })
         sessionId = result.sessionId
       }
@@ -301,7 +303,8 @@ export class WorkerOrchestratorManager extends EventEmitter {
       // No storage dir configured - can't check for incomplete sessions
       const result = await this.sessionManager.createSession({
         cwd,
-        app: this.app,
+        app: workerName,
+        workspace: null, // Don't derive workspace from worktree path
       })
       sessionId = result.sessionId
     }

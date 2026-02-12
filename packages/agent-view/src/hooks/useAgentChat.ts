@@ -85,6 +85,8 @@ export type UseAgentChatOptions = {
   storageKey?: string
   /** App namespace for session storage (e.g., "ralph", "task-chat"). Sessions are stored in separate directories per app. */
   app?: string
+  /** Workspace identifier (e.g., "owner/repo"). Pass null to prevent workspace derivation. If omitted, auto-derived from cwd. */
+  workspace?: string | null
   /** Allowed tools for new sessions. If omitted, adapter defaults are used. */
   allowedTools?: string[]
 }
@@ -93,7 +95,14 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
   // Support both legacy AgentType argument and new options object
   const options: UseAgentChatOptions =
     typeof optionsOrAgent === "string" ? { initialAgent: optionsOrAgent } : optionsOrAgent
-  const { initialAgent = "claude", systemPrompt, storageKey, app, allowedTools } = options
+  const {
+    initialAgent = "claude",
+    systemPrompt,
+    storageKey,
+    app,
+    workspace,
+    allowedTools,
+  } = options
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
@@ -133,7 +142,7 @@ export function useAgentChat(optionsOrAgent: AgentType | UseAgentChatOptions = "
       const res = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adapter: agentType, systemPrompt, app, allowedTools }),
+        body: JSON.stringify({ adapter: agentType, systemPrompt, app, workspace, allowedTools }),
       })
       const data = (await res.json()) as { sessionId: string }
       setSessionId(data.sessionId)
