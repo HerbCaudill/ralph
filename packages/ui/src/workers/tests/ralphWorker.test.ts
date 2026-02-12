@@ -1148,6 +1148,33 @@ describe("ralphWorker", () => {
       expect(createSessionCalls).toHaveLength(0)
     })
 
+    it("should transition to idle when status goes idle without any markers (r-suj0a)", async () => {
+      const workspaceId = "herbcaudill/ralph"
+      const { port, state } = await setupRunningWorkspace(workspaceId)
+
+      // Verify we're in running state
+      expect(state.controlState).toBe("running")
+      port.postMessage.mockClear()
+
+      // Status goes idle WITHOUT any markers being detected
+      // (simulates marker not being captured due to format/regex issues)
+      const ws = state.ws as MockWebSocket
+      ws.onmessage!({
+        data: JSON.stringify({ type: "status", status: "idle" }),
+      })
+
+      // BUG FIX: Should transition to idle to avoid hanging
+      expect(state.controlState).toBe("idle")
+
+      // Should broadcast state_change to idle
+      const stateChangeMessages = port.postMessage.mock.calls
+        .map((call: any[]) => call[0])
+        .filter((msg: any) => msg.type === "state_change")
+
+      expect(stateChangeMessages).toHaveLength(1)
+      expect(stateChangeMessages[0].state).toBe("idle")
+    })
+
     it("should clear sessionCompleted and promiseComplete on manual start", async () => {
       const workspaceId = "herbcaudill/ralph"
       const port = createMockPort()

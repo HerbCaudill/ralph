@@ -399,6 +399,10 @@ function connectWorkspace(workspaceId: string): void {
           //
           // 3. If sessionCompleted (<end_task>...</end_task> was seen), continue the loop
           //    — start a new session for the next task.
+          //
+          // 4. FALLBACK (r-suj0a): If none of the above markers were detected, transition
+          //    to idle. This prevents the UI from hanging when the marker wasn't captured
+          //    (e.g., regex mismatch, format issues, or agent completed without a marker).
           if (status !== "processing" && state.controlState === "running") {
             if (state.stopAfterCurrentPending) {
               // User requested stop after current — transition to idle
@@ -419,6 +423,9 @@ function connectWorkspace(workspaceId: string): void {
               // Task completed — continue to next task
               state.sessionCompleted = false
               createOrResumeSession(workspaceId)
+            } else {
+              // No marker detected — fallback to idle to avoid hanging (r-suj0a)
+              setControlState(workspaceId, "idle")
             }
           }
           return
