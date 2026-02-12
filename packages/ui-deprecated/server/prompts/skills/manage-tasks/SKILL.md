@@ -1,1 +1,0 @@
-../../../../../cli/templates/skills/manage-tasks/SKILL.md
