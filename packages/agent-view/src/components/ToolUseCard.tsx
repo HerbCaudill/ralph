@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { cn } from "../lib/utils"
 import { useAgentViewContext } from "../context/useAgentViewContext"
-import { TextWithLinks } from "./TextWithLinks"
+import { TextWithLinks } from "@herbcaudill/components"
 import { getLanguageFromFilePath } from "../lib/getLanguageFromFilePath"
 import { getOutputSummary } from "../lib/getOutputSummary"
 import { getPreviewInfo } from "../lib/getPreviewInfo"
@@ -26,7 +26,7 @@ export function ToolUseCard({
   defaultExpanded = true,
 }: ToolUseCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
-  const { workspacePath, toolOutput, toolExpansionState, setToolExpansionState } =
+  const { workspacePath, toolOutput, toolExpansionState, setToolExpansionState, linkHandlers } =
     useAgentViewContext()
   const globalIsVisible = toolOutput?.isVisible ?? true
 
@@ -112,7 +112,7 @@ export function ToolUseCard({
 
           {summary && (
             <span className="text-foreground/80 min-w-0 flex-1 truncate font-mono text-xs">
-              <TextWithLinks>{summary}</TextWithLinks>
+              <TextWithLinks linkHandlers={linkHandlers}>{summary}</TextWithLinks>
             </span>
           )}
 
@@ -174,7 +174,9 @@ export function ToolUseCard({
                         !isExpanded && remainingLines > 0 && "cursor-pointer",
                       )}
                     >
-                      <TextWithLinks>{isExpanded ? event.output : preview}</TextWithLinks>
+                      <TextWithLinks linkHandlers={linkHandlers}>
+                        {isExpanded ? event.output : preview}
+                      </TextWithLinks>
                       {!isExpanded && remainingLines > 0 && (
                         <>
                           {"\n"}

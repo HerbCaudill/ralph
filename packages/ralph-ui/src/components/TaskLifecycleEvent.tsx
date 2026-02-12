@@ -1,4 +1,5 @@
-import { cn, TextWithLinks, useAgentViewContext } from "@herbcaudill/agent-view"
+import { cn, useAgentViewContext } from "@herbcaudill/agent-view"
+import { TextWithLinks } from "@herbcaudill/components"
 import type { TaskLifecycleChatEvent } from "@herbcaudill/agent-view"
 import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
 
@@ -7,8 +8,8 @@ export function TaskLifecycleEvent({ event, className }: Props) {
   const isStarting = event.action === "starting"
   const Icon = isStarting ? IconPlayerPlay : IconCheck
 
-  // Look up task title from context
-  const { tasks } = useAgentViewContext()
+  // Look up task title and link handlers from context
+  const { tasks, linkHandlers } = useAgentViewContext()
   const taskTitle = event.taskId ? tasks?.find(t => t.id === event.taskId)?.title : undefined
 
   return (
@@ -45,7 +46,7 @@ export function TaskLifecycleEvent({ event, className }: Props) {
         <div className="flex items-baseline gap-2 text-xs">
           {/* TaskIdLink expects a string that may contain task IDs - pass the ID as text */}
           <span className="text-muted-foreground shrink-0 font-mono text-xs">
-            <TextWithLinks>{event.taskId}</TextWithLinks>
+            <TextWithLinks linkHandlers={linkHandlers}>{event.taskId}</TextWithLinks>
           </span>
           {taskTitle && <span className="truncate">{taskTitle}</span>}
         </div>

@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { IconBrain, IconChevronDown, IconChevronRight } from "@tabler/icons-react"
-import { Button } from "@herbcaudill/components"
+import { Button, MarkdownContent } from "@herbcaudill/components"
 import { cn } from "../lib/utils"
-import { MarkdownContent } from "./MarkdownContent"
+import { useAgentViewContext } from "../context/useAgentViewContext"
 
 /**
  * Renders Claude's extended thinking/internal monologue content.
@@ -11,6 +11,7 @@ import { MarkdownContent } from "./MarkdownContent"
  */
 export function ThinkingBlock({ content, className, defaultExpanded = false }: Props) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  const { isDark, linkHandlers } = useAgentViewContext()
 
   return (
     <div className={cn("py-1.5 pr-12 pl-4", className)}>
@@ -33,6 +34,8 @@ export function ThinkingBlock({ content, className, defaultExpanded = false }: P
             <MarkdownContent
               className="text-muted-foreground flex-1 font-serif text-sm italic"
               size="sm"
+              isDark={isDark}
+              linkHandlers={linkHandlers}
             >
               {content}
             </MarkdownContent>

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { MarkdownContent } from ".././MarkdownContent"
+import { MarkdownContent } from "../components/MarkdownContent"
 
 const meta: Meta<typeof MarkdownContent> = {
   title: "Content/MarkdownContent",
@@ -52,9 +52,9 @@ The project is progressing well. Here's a summary.
 
 | Feature | Status | Notes |
 | ------- | ------ | ----- |
-| Auth | ✅ Complete | OAuth2 + JWT |
-| Database | ✅ Complete | PostgreSQL |
-| REST API | 🚧 In Progress | 80% complete |
+| Auth | Complete | OAuth2 + JWT |
+| Database | Complete | PostgreSQL |
+| REST API | In Progress | 80% complete |
 
 ## Code Example
 
@@ -75,7 +75,7 @@ const api = createApi({
 2. Set up CI/CD pipeline
 3. Deploy to staging environment
 
-### Note 
+### Note
 
 > The choice of PostgreSQL over MongoDB was driven by our need for strong consistency
 > and complex relational queries.

@@ -1,12 +1,16 @@
 import { cn } from "../lib/utils"
-import { MarkdownContent } from "./MarkdownContent"
+import { MarkdownContent } from "@herbcaudill/components"
+import { useAgentViewContext } from "../context/useAgentViewContext"
 import type { AssistantTextEvent } from "../types"
 
 /**  Renders assistant text content with markdown support. */
 export function AssistantText({ event, className }: Props) {
+  const { isDark, linkHandlers } = useAgentViewContext()
   return (
     <div className={cn("py-1.5 pr-12 pl-4", className)}>
-      <MarkdownContent className="flex-1 font-serif">{event.content}</MarkdownContent>
+      <MarkdownContent className="flex-1 font-serif" isDark={isDark} linkHandlers={linkHandlers}>
+        {event.content}
+      </MarkdownContent>
     </div>
   )
 }

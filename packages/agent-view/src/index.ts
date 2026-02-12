@@ -44,13 +44,13 @@ export type { AgentControlsProps } from "./components/AgentControls"
 export { ChatInput } from "./components/ChatInput"
 export type { ChatInputProps, ChatInputHandle } from "./components/ChatInput"
 
-// Components: UI
-export { CodeBlock } from "./components/CodeBlock"
-export type { CodeBlockProps } from "./components/CodeBlock"
-export { MarkdownContent } from "./components/MarkdownContent"
-export type { MarkdownContentProps } from "./components/MarkdownContent"
-export { TextWithLinks } from "./components/TextWithLinks"
-export type { TextWithLinksProps } from "./components/TextWithLinks"
+// Components: UI (re-exported from @herbcaudill/components)
+export { CodeBlock, MarkdownContent, TextWithLinks } from "@herbcaudill/components"
+export type {
+  CodeBlockProps,
+  MarkdownContentProps,
+  TextWithLinksProps,
+} from "@herbcaudill/components"
 
 // Context
 export { AgentViewContext, DEFAULT_AGENT_VIEW_CONTEXT } from "./context/AgentViewContext"

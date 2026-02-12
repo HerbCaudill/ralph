@@ -13,13 +13,19 @@ import {
   IconCheckbox,
   type TablerIcon,
 } from "@tabler/icons-react"
-import { Button, ButtonGroup, Input, Label, Textarea } from "@herbcaudill/components"
+import {
+  Button,
+  ButtonGroup,
+  Input,
+  Label,
+  MarkdownContent,
+  Textarea,
+} from "@herbcaudill/components"
 import { cn } from "../../lib/cn"
 import { stripTaskPrefix } from "../../lib/stripTaskPrefix"
 import { CopyableTaskId } from "./CopyableTaskId"
 import type { Task, TaskStatus, Comment } from "../../types"
 import { CommentsSection } from "./CommentsSection"
-import { MarkdownContent } from "@herbcaudill/agent-view"
 import { RelatedTasks } from "./RelatedTasks"
 import { TaskRelationCombobox } from "./TaskRelationCombobox"
 import type { IssueType, TaskFormValues } from "../../hooks/useTaskDetails"

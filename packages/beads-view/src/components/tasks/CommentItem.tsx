@@ -1,4 +1,4 @@
-import { MarkdownContent } from "@herbcaudill/agent-view"
+import { MarkdownContent } from "@herbcaudill/components"
 import { formatRelativeTime } from "../../lib/formatRelativeTime"
 import type { Comment } from "../../types"
 

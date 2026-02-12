@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { CodeBlock } from ".././CodeBlock"
+import { CodeBlock } from "../components/CodeBlock"
 
 const meta: Meta<typeof CodeBlock> = {
   title: "Content/CodeBlock",

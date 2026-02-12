@@ -1,15 +1,10 @@
 import { describe, it, expect, vi } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { AgentViewProvider } from "../../context/AgentViewProvider"
-import { CodeBlock } from "../CodeBlock"
+import { CodeBlock } from "@herbcaudill/components"
 
 describe("CodeBlock", () => {
   it("renders a copy button using the shared Button component", async () => {
-    render(
-      <AgentViewProvider value={{}}>
-        <CodeBlock code="const x = 1" language="typescript" />
-      </AgentViewProvider>,
-    )
+    render(<CodeBlock code="const x = 1" language="typescript" />)
 
     const copyButton = await screen.findByRole("button", { name: "Copy code" })
     expect(copyButton).toBeDefined()
@@ -28,11 +23,7 @@ describe("CodeBlock", () => {
       clipboard: { writeText },
     })
 
-    render(
-      <AgentViewProvider value={{}}>
-        <CodeBlock code="const x = 1" language="typescript" />
-      </AgentViewProvider>,
-    )
+    render(<CodeBlock code="const x = 1" language="typescript" />)
 
     const copyButton = await screen.findByRole("button", { name: "Copy code" })
     fireEvent.click(copyButton)
@@ -44,11 +35,7 @@ describe("CodeBlock", () => {
   })
 
   it("hides copy button when showCopy is false", async () => {
-    render(
-      <AgentViewProvider value={{}}>
-        <CodeBlock code="const x = 1" showCopy={false} />
-      </AgentViewProvider>,
-    )
+    render(<CodeBlock code="const x = 1" showCopy={false} />)
 
     // Wait for the component to render
     await waitFor(() => {

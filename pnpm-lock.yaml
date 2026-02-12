@@ -441,9 +441,6 @@ importers:
 
   packages/beads-view:
     dependencies:
-      "@herbcaudill/agent-view":
-        specifier: workspace:*
-        version: link:../agent-view
       "@herbcaudill/components":
         specifier: workspace:*
         version: link:../components
@@ -472,6 +469,9 @@ importers:
         specifier: ^5.0.10
         version: 5.0.10(@types/react@19.2.8)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
     devDependencies:
+      "@herbcaudill/agent-view":
+        specifier: workspace:*
+        version: link:../agent-view
       "@storybook/addon-vitest":
         specifier: ^10.2.0
         version: 10.2.0(@vitest/browser-playwright@4.0.18)(@vitest/browser@4.0.18(vite@7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0))(vitest@4.0.18))(@vitest/runner@4.0.18)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(storybook@10.2.0(@testing-library/dom@10.4.1)(prettier@3.8.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vitest@4.0.18)
@@ -526,6 +526,9 @@ importers:
 
   packages/components:
     dependencies:
+      "@herbcaudill/agent-view-theme":
+        specifier: workspace:*
+        version: link:../agent-view-theme
       "@radix-ui/react-dialog":
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -568,6 +571,12 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.3(react@19.2.3)
+      react-markdown:
+        specifier: ^10.1.0
+        version: 10.1.0(@types/react@19.2.8)(react@19.2.3)
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
