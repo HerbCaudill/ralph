@@ -335,8 +335,7 @@ describe("useRalphSessions", () => {
     it("should re-resolve titles when tasks change without refetching sessions", async () => {
       const initialTasks = [{ id: "task-123", title: "Old title" }]
       const { result, rerender } = renderHook(
-        ({ sessionId, workspaceId, tasks }) =>
-          useRalphSessions(sessionId, workspaceId, tasks),
+        ({ sessionId, workspaceId, tasks }) => useRalphSessions(sessionId, workspaceId, tasks),
         {
           initialProps: {
             sessionId: "session-1" as string | null,
@@ -366,6 +365,79 @@ describe("useRalphSessions", () => {
         const session456 = result.current.sessions.find(s => s.taskId === "task-456")
         expect(session456?.taskTitle).toBe("New feature title")
       })
+    })
+  })
+
+  describe("refetchSessions", () => {
+    it("should refetch sessions when called", async () => {
+      const { result } = renderHook(
+        ({ sessionId, workspaceId }) => useRalphSessions(sessionId, workspaceId),
+        {
+          initialProps: { sessionId: "session-1" as string | null, workspaceId: "owner/repo1" },
+        },
+      )
+
+      // Wait for initial fetch
+      await waitFor(() => {
+        expect(mockFetchRalphSessions).toHaveBeenCalledTimes(1)
+        expect(result.current.sessions).toEqual(mockSessions)
+      })
+
+      // Update the mock to return new sessions
+      const newSessions: RalphSessionIndexEntry[] = [
+        ...mockSessions,
+        {
+          sessionId: "session-3",
+          adapter: "claude",
+          firstMessageAt: 4000,
+          lastMessageAt: 4500,
+          firstUserMessage: "task-789",
+          taskId: "task-789",
+          taskTitle: "New task",
+        },
+      ]
+      mockFetchRalphSessions.mockResolvedValue(newSessions)
+
+      // Call refetchSessions
+      await act(async () => {
+        await result.current.refetchSessions()
+      })
+
+      // Should have fetched again
+      expect(mockFetchRalphSessions).toHaveBeenCalledTimes(2)
+
+      // Sessions should be updated
+      await waitFor(() => {
+        expect(result.current.sessions).toHaveLength(3)
+        expect(result.current.sessions.find(s => s.sessionId === "session-3")).toBeDefined()
+      })
+    })
+
+    it("should handle refetchSessions errors gracefully", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+      const { result } = renderHook(() => useRalphSessions("session-1", "owner/repo1"))
+
+      // Wait for initial fetch
+      await waitFor(() => {
+        expect(result.current.sessions).toEqual(mockSessions)
+      })
+
+      // Make the next fetch fail
+      mockFetchRalphSessions.mockRejectedValue(new Error("Network error"))
+
+      // Call refetchSessions
+      await act(async () => {
+        await result.current.refetchSessions()
+      })
+
+      // Should log error
+      expect(consoleSpy).toHaveBeenCalled()
+
+      // Sessions should remain unchanged
+      expect(result.current.sessions).toEqual(mockSessions)
+
+      consoleSpy.mockRestore()
     })
   })
 })

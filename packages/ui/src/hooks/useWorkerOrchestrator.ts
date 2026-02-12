@@ -20,6 +20,23 @@ export interface WorkerInfo {
 }
 
 /**
+ * Session creation event payload.
+ */
+export interface SessionCreatedEvent {
+  workerName: string
+  sessionId: string
+  taskId: string
+}
+
+/**
+ * Options for the useWorkerOrchestrator hook.
+ */
+export interface UseWorkerOrchestratorOptions {
+  /** Callback invoked when a new session is created by any worker. */
+  onSessionCreated?: (event: SessionCreatedEvent) => void
+}
+
+/**
  * Return type of the useWorkerOrchestrator hook.
  */
 export interface UseWorkerOrchestratorReturn {
@@ -33,6 +50,10 @@ export interface UseWorkerOrchestratorReturn {
   activeWorkerCount: number
   /** Whether connected to the server. */
   isConnected: boolean
+  /** IDs of currently active sessions (one per running worker). */
+  activeSessionIds: string[]
+  /** The most recently created session ID (for auto-selection). */
+  latestSessionId: string | null
 
   // Orchestrator controls
   /** Start the orchestrator. */
@@ -73,16 +94,29 @@ type OrchestratorMessage =
  * This hook connects to the server's orchestrator WebSocket endpoint and provides:
  * - Real-time state updates for the orchestrator and individual workers
  * - Control actions for starting, stopping, pausing, and resuming workers
+ * - Session tracking for active worker sessions
  *
  * @param workspaceId - The workspace identifier in `owner/repo` format.
+ * @param options - Optional configuration including callbacks.
  * @returns Object with orchestrator state and control functions.
  */
-export function useWorkerOrchestrator(workspaceId?: string): UseWorkerOrchestratorReturn {
+export function useWorkerOrchestrator(
+  workspaceId?: string,
+  options?: UseWorkerOrchestratorOptions,
+): UseWorkerOrchestratorReturn {
   const [state, setState] = useState<OrchestratorState>("stopped")
   const [workers, setWorkers] = useState<Record<string, WorkerInfo>>({})
   const [maxWorkers, setMaxWorkers] = useState(3)
   const [activeWorkerCount, setActiveWorkerCount] = useState(0)
   const [isConnected, setIsConnected] = useState(false)
+  const [activeSessionIds, setActiveSessionIds] = useState<string[]>([])
+  const [latestSessionId, setLatestSessionId] = useState<string | null>(null)
+
+  // Store callback ref to avoid dependency issues
+  const onSessionCreatedRef = useRef(options?.onSessionCreated)
+  useEffect(() => {
+    onSessionCreatedRef.current = options?.onSessionCreated
+  }, [options?.onSessionCreated])
 
   const wsRef = useRef<WebSocket | null>(null)
   const currentWorkspaceRef = useRef<string | undefined>(undefined)
@@ -128,6 +162,9 @@ export function useWorkerOrchestrator(workspaceId?: string): UseWorkerOrchestrat
 
         case "orchestrator_stopped":
           setState(data.state as OrchestratorState)
+          // Clear active sessions when orchestrator stops
+          setActiveSessionIds([])
+          setLatestSessionId(null)
           break
 
         case "orchestrator_stopping":
@@ -219,6 +256,25 @@ export function useWorkerOrchestrator(workspaceId?: string): UseWorkerOrchestrat
               },
             }
           })
+          break
+        }
+
+        case "session_created": {
+          const sessionId = data.sessionId as string
+          const workerName = data.workerName as string
+          const taskId = data.taskId as string
+
+          // Track this session as active
+          setActiveSessionIds(prev => {
+            if (prev.includes(sessionId)) return prev
+            return [...prev, sessionId]
+          })
+
+          // Update latest session for auto-selection
+          setLatestSessionId(sessionId)
+
+          // Invoke callback if provided
+          onSessionCreatedRef.current?.({ workerName, sessionId, taskId })
           break
         }
 
@@ -344,6 +400,8 @@ export function useWorkerOrchestrator(workspaceId?: string): UseWorkerOrchestrat
     maxWorkers,
     activeWorkerCount,
     isConnected,
+    activeSessionIds,
+    latestSessionId,
     start,
     stop,
     stopAfterCurrent,

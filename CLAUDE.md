@@ -118,7 +118,7 @@ Task-chat sessions are read-only for file editing: session creation passes an `a
 
 Session resume functionality: When `storageDir` is provided, the manager checks for incomplete sessions before creating new ones. `findIncompleteSession(taskId, app, storageDir)` scans JSONL session files for sessions that have a `<start_task>` marker but no corresponding `<end_task>` marker. If found, the existing session is resumed with a prompt telling the agent to continue from where it left off, rather than starting over.
 
-The UI layer uses `useWorkerOrchestrator` hook (in `packages/ui/src/hooks/`) to connect to the orchestrator via WebSocket, receiving real-time state updates for all workers. The `WorkerControlBar` component displays active workers with per-worker pause/resume/stop controls and a global stop-after-current button.
+The UI layer uses `useWorkerOrchestrator` hook (in `packages/ui/src/hooks/`) to connect to the orchestrator via WebSocket, receiving real-time state updates for all workers. The hook tracks `activeSessionIds` and `latestSessionId` to enable session dropdown spinners and auto-selection when new sessions are created. An `onSessionCreated` callback option allows the caller to respond to new sessions (e.g., refetch session list, auto-select). The `WorkerControlBar` component displays active workers with per-worker pause/resume/stop controls and a global stop-after-current button.
 
 ## Runtime interaction (CLI)
 

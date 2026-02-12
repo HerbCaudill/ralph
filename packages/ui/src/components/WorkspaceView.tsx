@@ -84,8 +84,14 @@ export function WorkspaceView() {
   const { tasks, refresh } = useTasks({ all: true })
 
   // Session history management — pass tasks so titles resolve from local cache
-  const { sessions, historicalEvents, isViewingHistorical, selectSession, clearHistorical } =
-    useRalphSessions(sessionId, workspaceId, tasks)
+  const {
+    sessions,
+    historicalEvents,
+    isViewingHistorical,
+    selectSession,
+    clearHistorical,
+    refetchSessions,
+  } = useRalphSessions(sessionId, workspaceId, tasks)
 
   // Load session from URL when navigating directly to a session URL.
   // Only triggers when URL sessionId is different from the live sessionId.
@@ -154,8 +160,27 @@ export function WorkspaceView() {
   // Real-time task refresh via WebSocket
   useTaskMutations({ workspacePath: workspace?.path })
 
+  // Handle orchestrator session creation: refetch sessions and auto-select the new session
+  const handleOrchestratorSessionCreated = useCallback(
+    ({ sessionId: newSessionId }: { sessionId: string }) => {
+      // Refetch sessions to pick up the new session from the server
+      refetchSessions()
+      // Auto-select the newly created session if not viewing a historical session
+      if (!isViewingHistorical) {
+        selectSession(newSessionId)
+        // Update URL to reflect the new session
+        if (workspaceId) {
+          navigate(`/${workspaceId}/${newSessionId}`, { replace: true })
+        }
+      }
+    },
+    [refetchSessions, isViewingHistorical, selectSession, workspaceId, navigate],
+  )
+
   // Worker orchestrator for parallel execution control
-  const orchestrator = useWorkerOrchestrator(workspaceId)
+  const orchestrator = useWorkerOrchestrator(workspaceId, {
+    onSessionCreated: handleOrchestratorSessionCreated,
+  })
 
   // Derive the effective control state from the orchestrator for UI display.
   // This maps orchestrator states to the ControlState type expected by UI components.

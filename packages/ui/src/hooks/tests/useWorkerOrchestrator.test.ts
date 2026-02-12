@@ -735,6 +735,169 @@ describe("useWorkerOrchestrator", () => {
     })
   })
 
+  describe("session tracking", () => {
+    it("should track active session IDs when receiving session_created events", async () => {
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+      const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
+
+      await waitFor(() => {
+        expect(MockWebSocket.instances.length).toBe(1)
+      })
+
+      const ws = MockWebSocket.instances[0]
+
+      // Initially no active sessions
+      expect(result.current.activeSessionIds).toEqual([])
+
+      // Receive session_created event
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Ralph",
+          sessionId: "session-abc123",
+          taskId: "r-xyz789",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.activeSessionIds).toContain("session-abc123")
+      })
+
+      // Receive another session_created event
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Homer",
+          sessionId: "session-def456",
+          taskId: "r-uvw123",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.activeSessionIds).toHaveLength(2)
+        expect(result.current.activeSessionIds).toContain("session-abc123")
+        expect(result.current.activeSessionIds).toContain("session-def456")
+      })
+    })
+
+    it("should call onSessionCreated callback when session_created event is received", async () => {
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+      const onSessionCreated = vi.fn()
+      renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID, { onSessionCreated }))
+
+      await waitFor(() => {
+        expect(MockWebSocket.instances.length).toBe(1)
+      })
+
+      const ws = MockWebSocket.instances[0]
+
+      // Receive session_created event
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Ralph",
+          sessionId: "session-abc123",
+          taskId: "r-xyz789",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(onSessionCreated).toHaveBeenCalledWith({
+          workerName: "Ralph",
+          sessionId: "session-abc123",
+          taskId: "r-xyz789",
+        })
+      })
+    })
+
+    it("should return the most recently created session ID", async () => {
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+      const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
+
+      await waitFor(() => {
+        expect(MockWebSocket.instances.length).toBe(1)
+      })
+
+      const ws = MockWebSocket.instances[0]
+
+      // Initially no latest session
+      expect(result.current.latestSessionId).toBeNull()
+
+      // First session
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Ralph",
+          sessionId: "session-abc123",
+          taskId: "r-xyz789",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.latestSessionId).toBe("session-abc123")
+      })
+
+      // Second session (should become latest)
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Homer",
+          sessionId: "session-def456",
+          taskId: "r-uvw123",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.latestSessionId).toBe("session-def456")
+      })
+    })
+
+    it("should clear active session IDs when orchestrator stops", async () => {
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+      const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
+
+      await waitFor(() => {
+        expect(MockWebSocket.instances.length).toBe(1)
+      })
+
+      const ws = MockWebSocket.instances[0]
+
+      // Add a session
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Ralph",
+          sessionId: "session-abc123",
+          taskId: "r-xyz789",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.activeSessionIds).toHaveLength(1)
+      })
+
+      // Orchestrator stops
+      act(() => {
+        ws.simulateMessage({
+          type: "orchestrator_stopped",
+          state: "stopped",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.activeSessionIds).toEqual([])
+        expect(result.current.latestSessionId).toBeNull()
+      })
+    })
+  })
+
   describe("React StrictMode double-mount handling", () => {
     it("should not create a WebSocket if component unmounts synchronously before timeout fires", async () => {
       // This test simulates React StrictMode's synchronous mount → unmount → remount behavior

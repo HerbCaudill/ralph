@@ -25,6 +25,30 @@ export function useRalphSessions(
     workspaceId: undefined,
   })
 
+  // Store references for refetch callback
+  const workspaceIdRef = useRef(workspaceId)
+  const tasksRef = useRef(tasks)
+  useEffect(() => {
+    workspaceIdRef.current = workspaceId
+    tasksRef.current = tasks
+  }, [workspaceId, tasks])
+
+  /**
+   * Force refetch sessions from the server.
+   * Call this when orchestrator creates a new session.
+   */
+  const refetchSessions = useCallback(async () => {
+    try {
+      const result = await fetchRalphSessions({
+        workspaceId: workspaceIdRef.current,
+        tasks: tasksRef.current,
+      })
+      setSessions(result)
+    } catch (error) {
+      console.error("[useRalphSessions] Failed to refetch sessions:", error)
+    }
+  }, [])
+
   // Fetch sessions on mount and when currentSessionId, workspaceId, or tasks change
   useEffect(() => {
     // Skip if neither session ID nor workspace ID has changed
@@ -89,6 +113,7 @@ export function useRalphSessions(
     historicalEvents,
     isViewingHistorical,
     clearHistorical,
+    refetchSessions,
   }
 }
 
@@ -104,4 +129,6 @@ export interface UseRalphSessionsReturn {
   isViewingHistorical: boolean
   /** Clear historical events and return to the live session. */
   clearHistorical: () => void
+  /** Force refetch sessions from the server (e.g., when orchestrator creates new sessions). */
+  refetchSessions: () => Promise<void>
 }
