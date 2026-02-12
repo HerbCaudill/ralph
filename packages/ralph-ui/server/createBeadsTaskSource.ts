@@ -1,4 +1,4 @@
-import type { TaskSource } from "@herbcaudill/agent-server"
+import type { TaskSource } from "./lib/WorkerOrchestratorManager.js"
 
 /**
  * Create a TaskSource that checks task availability from the beads-server REST API.

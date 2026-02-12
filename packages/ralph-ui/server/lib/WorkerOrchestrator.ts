@@ -4,8 +4,6 @@ import {
   type RunAgentResult,
   type WorkerState as WorkerLoopState,
 } from "./WorkerLoop.js"
-// TODO: workerNames moved to @herbcaudill/ralph-ui (server/lib/workerNames.ts).
-// Remove this local copy when WorkerOrchestrator is moved to ralph-ui.
 import { getWorkerName, type WorkerName } from "./workerNames.js"
 
 /**

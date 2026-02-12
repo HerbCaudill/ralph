@@ -1,9 +1,11 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { WorktreeManager } from "../WorktreeManager.js"
 import { mkdir, rm, writeFile, readFile } from "node:fs/promises"
 import { join } from "node:path"
+import { tmpdir } from "node:os"
 import { spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, realpathSync } from "node:fs"
 
 /**
  * Run a git command in the specified directory and return its stdout.
@@ -43,7 +45,7 @@ function git(
 }
 
 describe("WorktreeManager", () => {
-  const testDir = join(process.cwd(), ".test-worktrees-agent-server")
+  const testDir = join(realpathSync(tmpdir()), `test-worktrees-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const mainWorkspacePath = join(testDir, "project")
   const worktreesPath = join(testDir, "project-worktrees")
   let manager: WorktreeManager

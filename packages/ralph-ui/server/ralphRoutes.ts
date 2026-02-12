@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express"
-import { registerOrchestratorRoutes } from "@herbcaudill/agent-server"
-import type { WorkerOrchestratorManager } from "@herbcaudill/agent-server"
+import { registerOrchestratorRoutes } from "./routes/orchestratorRoutes.js"
+import type { WorkerOrchestratorManager } from "./lib/WorkerOrchestratorManager.js"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
 
 /** Register Ralph-specific routes on the Express app. */

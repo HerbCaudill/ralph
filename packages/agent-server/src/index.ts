@@ -85,8 +85,6 @@ export type {
 
 export { registerRoutes } from "./routes.js"
 export type { RouteContext } from "./routes.js"
-export { registerOrchestratorRoutes } from "./routes/orchestratorRoutes.js"
-export type { OrchestratorRouteContext } from "./routes/orchestratorRoutes.js"
 export { handleWsConnection } from "./wsHandler.js"
 export type { WsClient, WsHandlerOptions } from "./wsHandler.js"
 
@@ -112,46 +110,6 @@ export { registerPromptRoutes } from "./routes/promptRoutes.js"
 export type { PromptRouteContext } from "./routes/promptRoutes.js"
 export { parseTaskLifecycleEvent } from "./lib/parseTaskLifecycleEvent.js"
 export type { TaskLifecycleEventData } from "./lib/parseTaskLifecycleEvent.js"
-
-// ── Worktree management ─────────────────────────────────────────────
-
-export { WorktreeManager } from "./lib/WorktreeManager.js"
-export type {
-  WorktreeInfo,
-  CreateWorktreeOptions,
-  RemoveWorktreeOptions,
-  MergeResult,
-  CleanupResult,
-} from "./lib/WorktreeManager.js"
-
-// ── Worker loop ─────────────────────────────────────────────────────
-
-export { WorkerLoop } from "./lib/WorkerLoop.js"
-export type {
-  WorkerLoopOptions,
-  WorkerLoopEvents,
-  RunAgentResult,
-  TestResult,
-  MergeConflictContext,
-  WorkerState,
-} from "./lib/WorkerLoop.js"
-
-// ── Worker orchestrator ──────────────────────────────────────────────
-
-export { WorkerOrchestrator } from "./lib/WorkerOrchestrator.js"
-export type {
-  WorkerOrchestratorOptions,
-  WorkerOrchestratorEvents,
-  OrchestratorState,
-  WorkerInfo,
-} from "./lib/WorkerOrchestrator.js"
-
-export { WorkerOrchestratorManager } from "./lib/WorkerOrchestratorManager.js"
-export type {
-  WorkerOrchestratorManagerOptions,
-  WorkerOrchestratorManagerEvents,
-  TaskSource,
-} from "./lib/WorkerOrchestratorManager.js"
 
 // ── Server ───────────────────────────────────────────────────────────
 
@@ -232,20 +190,10 @@ export async function startServer(config: AgentServerConfig): Promise<{
   // Register custom routes if provided
   config.customRoutes?.(app)
 
-  // Handle WebSocket connections.
-  // The getOrchestrator callback reads lazily from app.locals so that
-  // customRoutes (or post-startup code) can set it after startServer returns.
+  // Handle WebSocket connections
   wss.on("connection", (ws: WebSocket) => {
     handleWsConnection(ws, wsClients, {
       getSessionManager: () => sessionManager,
-      getOrchestrator: workspaceId => {
-        const getter = app.locals.getOrchestrator as
-          | ((
-              wid?: string,
-            ) => import("./lib/WorkerOrchestratorManager.js").WorkerOrchestratorManager | null)
-          | undefined
-        return getter?.(workspaceId) ?? null
-      },
     })
   })
 

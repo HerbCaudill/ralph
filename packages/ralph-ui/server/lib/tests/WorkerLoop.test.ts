@@ -1,10 +1,12 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { WorkerLoop, type WorkerLoopOptions, type WorkerLoopEvents } from "../WorkerLoop.js"
 import { WorktreeManager } from "../WorktreeManager.js"
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { tmpdir } from "node:os"
 import { spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, realpathSync } from "node:fs"
 
 /**
  * Run a git command in the specified directory and return its stdout.
@@ -64,7 +66,7 @@ function createMockRunAgent(options?: {
 }
 
 describe("WorkerLoop", () => {
-  const testDir = join(process.cwd(), ".test-worker-loop")
+  const testDir = join(realpathSync(tmpdir()), `test-worker-loop-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const mainWorkspacePath = join(testDir, "project")
   let worktreeManager: WorktreeManager
 

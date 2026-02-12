@@ -83,9 +83,9 @@ Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</
 Two independent servers:
 
 - **beads-server** (port 4243) — Task management REST API + WebSocket for mutation events
-- **agent-server** (port 4244) — Agent chat server with adapters (Claude, Codex), session management (ChatSessionManager, SessionPersister), JSONL persistence, WebSocket streaming. Supports `customRoutes` in config for app-specific route injection.
+- **agent-server** (port 4244) — Generic agent chat server with adapters (Claude, Codex), session management (ChatSessionManager, SessionPersister), JSONL persistence, WebSocket streaming. Supports `customRoutes` in config for app-specific route injection. Does **not** contain worker orchestration — that lives in ralph-ui.
 
-In dev mode, `packages/ralph-ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes injected via `customRoutes`.
+In dev mode, `packages/ralph-ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes (including orchestrator REST routes and WebSocket commands) injected via `customRoutes`.
 
 The UI is frontend-only, connecting to both servers. Ralph loop orchestration happens client-side in a SharedWorker (`ralphWorker.ts`).
 
@@ -114,9 +114,11 @@ Task-chat sessions are read-only for file editing: session creation passes an `a
 
 ### Concurrent workers
 
-`WorktreeManager`, `WorkerLoop`, `WorkerOrchestrator`, and `WorkerOrchestratorManager` (all in `packages/agent-server/src/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from `packages/ralph-ui/server/lib/workerNames.ts`; a temporary copy also exists in `packages/agent-server/src/lib/workerNames.ts` until orchestration moves to ralph-ui). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns an agent session, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
+`WorktreeManager`, `WorkerLoop`, `WorkerOrchestrator`, and `WorkerOrchestratorManager` (all in `packages/ralph-ui/server/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from `packages/ralph-ui/server/lib/workerNames.ts`). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns an agent session, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
 
-`WorkerOrchestratorManager` integrates with `ChatSessionManager` to create agent sessions instead of spawning CLI processes directly. When a `sessionManager` option is provided, sessions are created via `ChatSessionManager.createSession()`, the Ralph prompt is loaded via `loadSessionPrompt`, and the task assignment is sent as the initial message. This enables event streaming through the existing WebSocket pipeline. The manager emits a `session_created` event with `{ workerName, sessionId, taskId }` when a new session starts, or `session_resumed` when resuming an incomplete session.
+Orchestrator REST routes live in `packages/ralph-ui/server/routes/orchestratorRoutes.ts`. Orchestrator WebSocket commands (subscribe, start, stop, pause, resume) are handled by `packages/ralph-ui/server/lib/orchestratorWsHandler.ts`, which provides `handleOrchestratorWsMessage()` and `setupOrchestratorEventForwarding()` functions that ralph-ui's `startAgentServer.ts` wires into the agent-server's WebSocket pipeline.
+
+`WorkerOrchestratorManager` integrates with `ChatSessionManager` (from `@herbcaudill/agent-server`) to create agent sessions instead of spawning CLI processes directly. When a `sessionManager` option is provided, sessions are created via `ChatSessionManager.createSession()`, the Ralph prompt is loaded via `loadSessionPrompt`, and the task assignment is sent as the initial message. This enables event streaming through the existing WebSocket pipeline. The manager emits a `session_created` event with `{ workerName, sessionId, taskId }` when a new session starts, or `session_resumed` when resuming an incomplete session.
 
 Session resume functionality: When `storageDir` is provided, the manager checks for incomplete sessions before creating new ones. If an incomplete session is found (has `<start_task>` but no `<end_task>`), the existing session is resumed with a prompt telling the agent to continue from where it left off, rather than starting over.
 

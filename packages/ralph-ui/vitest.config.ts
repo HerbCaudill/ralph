@@ -12,5 +12,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/vitest-setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "server/**/*.test.ts"],
+    environmentMatchGlobs: [["server/**/*.test.ts", "node"]],
+    poolMatchGlobs: [["server/**/*.test.ts", "forks"]],
   },
 })

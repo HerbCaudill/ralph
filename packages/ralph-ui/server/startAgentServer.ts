@@ -2,10 +2,16 @@
  * Wrapper entry point that starts the agent-server with Ralph-specific routes
  * and wires up the worker orchestrator for concurrent agent sessions.
  */
-import { startServer, getConfig, WorkerOrchestratorManager } from "@herbcaudill/agent-server"
+import { startServer, getConfig } from "@herbcaudill/agent-server"
 import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { registerRalphRoutes } from "./ralphRoutes.js"
 import { createBeadsTaskSource } from "./createBeadsTaskSource.js"
+import { WorkerOrchestratorManager } from "./lib/WorkerOrchestratorManager.js"
+import {
+  handleOrchestratorWsMessage,
+  setupOrchestratorEventForwarding,
+  type OrchestratorWsClient,
+} from "./lib/orchestratorWsHandler.js"
 
 /** Get the beads-server URL from environment variables. */
 function getBeadsServerUrl(): string {

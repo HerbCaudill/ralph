@@ -7,7 +7,7 @@ import {
   type WorkerInfo,
 } from "./WorkerOrchestrator.js"
 import { type RunAgentResult } from "./WorkerLoop.js"
-import type { ChatSessionManager } from "../ChatSessionManager.js"
+import type { ChatSessionManager } from "@herbcaudill/agent-server"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
 
 /**

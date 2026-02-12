@@ -1,10 +1,11 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest"
 import { WorkerOrchestratorManager, type TaskSource } from "../WorkerOrchestratorManager.js"
 import type {
   ChatSessionManager,
   CreateSessionOptions,
   SessionInfo,
-} from "../../ChatSessionManager.js"
+} from "@herbcaudill/agent-server"
 import { EventEmitter } from "node:events"
 
 /**
@@ -174,6 +175,9 @@ describe("WorkerOrchestratorManager", () => {
         mainWorkspacePath: "/tmp/test-workspace",
         taskSource: mockTaskSource,
       })
+
+      // Suppress unhandled errors from workers spawned in a non-existent workspace
+      manager.on("error", () => {})
 
       await manager.start()
 
