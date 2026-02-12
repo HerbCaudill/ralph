@@ -6,12 +6,11 @@ import { Logo } from "./Logo"
 import { HelpButton } from "./HelpButton"
 import { SettingsDropdown } from "./SettingsDropdown"
 import { HeaderAgentInfo } from "./HeaderAgentInfo"
-import { HeaderRepoBranch } from "./HeaderRepoBranch"
 
 /**
  * Presentational component for the application header.
  *
- * Displays logo, workspace selector, agent info, repo/branch, and settings controls
+ * Displays logo, workspace selector, agent info, and settings controls
  * with the accent color as background and contrasting text. All data is passed via props.
  */
 export function Header({
@@ -22,9 +21,6 @@ export function Header({
   isWorkspaceLoading,
   agentDisplayName,
   modelName,
-  workspaceName,
-  branch,
-  workspacePath,
   onWorkspaceSwitch,
   onHelpClick,
 }: HeaderProps) {
@@ -32,7 +28,6 @@ export function Header({
   const textColor = getContrastingColor(backgroundColor)
 
   const showAgentInfo = agentDisplayName != null
-  const showRepoBranch = workspaceName != null || branch != null
 
   return (
     <header
@@ -51,25 +46,13 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-4" style={{ color: textColor }}>
-        {/* Agent and repo/branch info */}
-        {(showAgentInfo || showRepoBranch) && (
-          <div className="flex items-center gap-4">
-            {showAgentInfo && (
-              <HeaderAgentInfo
-                agentDisplayName={agentDisplayName}
-                modelName={modelName ?? null}
-                textColor={textColor}
-              />
-            )}
-            {showRepoBranch && (
-              <HeaderRepoBranch
-                workspaceName={workspaceName ?? null}
-                branch={branch ?? null}
-                workspacePath={workspacePath ?? null}
-                textColor={textColor}
-              />
-            )}
-          </div>
+        {/* Agent info */}
+        {showAgentInfo && (
+          <HeaderAgentInfo
+            agentDisplayName={agentDisplayName}
+            modelName={modelName ?? null}
+            textColor={textColor}
+          />
         )}
 
         <div className="flex items-center gap-2">
@@ -100,12 +83,6 @@ export type HeaderProps = {
   agentDisplayName?: string | null
   /** Formatted model name (e.g., "Sonnet 4", "o3"). */
   modelName?: string | null
-  /** Workspace/repository name for the repo/branch display. */
-  workspaceName?: string | null
-  /** Git branch name. */
-  branch?: string | null
-  /** Full path to the workspace (shown in tooltip). */
-  workspacePath?: string | null
   /** Callback when user switches workspace */
   onWorkspaceSwitch: (path: string) => void
   /** Callback when help button is clicked (opens hotkeys dialog) */

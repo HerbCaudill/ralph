@@ -241,4 +241,49 @@ describe("WorkspaceSelector", () => {
       expect(dropdownItem).toHaveClass("font-medium")
     })
   })
+
+  describe("visual indicators", () => {
+    it("shows a chevron/caret icon to indicate dropdown", () => {
+      const { container } = render(
+        <WorkspaceSelector
+          current={makeWorkspace({ name: "Alpha" })}
+          workspaces={[makeWorkspace()]}
+          isLoading={false}
+          onSwitch={() => {}}
+        />,
+      )
+      // The chevron should be present in the button
+      const chevron = container.querySelector("[data-testid='dropdown-chevron']")
+      expect(chevron).toBeInTheDocument()
+    })
+
+    it("renders an icon in the selector button", () => {
+      const { container } = render(
+        <WorkspaceSelector
+          current={makeWorkspace({ name: "Alpha" })}
+          workspaces={[]}
+          isLoading={false}
+          onSwitch={() => {}}
+        />,
+      )
+      // Should have an SVG icon in the button
+      const button = screen.getByRole("button")
+      const svg = button.querySelector("svg")
+      expect(svg).toBeInTheDocument()
+    })
+
+    it("uses smaller text size in the selector button", () => {
+      render(
+        <WorkspaceSelector
+          current={makeWorkspace({ name: "Alpha" })}
+          workspaces={[]}
+          isLoading={false}
+          onSwitch={() => {}}
+        />,
+      )
+      const button = screen.getByRole("button")
+      // Should have text-xs instead of text-sm
+      expect(button).toHaveClass("text-xs")
+    })
+  })
 })

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { IconLayoutList, IconCheck, IconLoader2 } from "@tabler/icons-react"
+import { IconGitBranch, IconCheck, IconLoader2, IconChevronDown } from "@tabler/icons-react"
 import type { Workspace } from "../../hooks/useWorkspace"
 
 export type WorkspaceSelectorProps = {
@@ -26,12 +26,13 @@ export function WorkspaceSelector({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-white/10"
+        className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-white/10"
       >
         {isLoading ?
           <IconLoader2 size={16} stroke={1.5} className="animate-spin" />
-        : <IconLayoutList size={16} stroke={1.5} />}
+        : <IconGitBranch size={16} stroke={1.5} />}
         {displayName}
+        <IconChevronDown size={14} stroke={1.5} data-testid="dropdown-chevron" />
       </button>
 
       {/* Dropdown */}

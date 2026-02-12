@@ -485,9 +485,6 @@ export function WorkspaceView() {
         isWorkspaceLoading={isWorkspaceLoading}
         agentDisplayName={agentDisplayName}
         modelName={modelName}
-        workspaceName={workspace?.name}
-        branch={workspace?.branch}
-        workspacePath={workspace?.path}
         onWorkspaceSwitch={handleWorkspaceSwitch}
         onHelpClick={handleShowHotkeys}
       />

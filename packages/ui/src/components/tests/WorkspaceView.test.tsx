@@ -685,19 +685,13 @@ describe("WorkspaceView Header agent/model and workspace props", () => {
   })
 
   describe("workspace info props", () => {
-    it("passes workspaceName to Header", () => {
+    it("does not pass workspace name/branch/path directly to Header (shown in WorkspaceSelector)", () => {
+      // The Header no longer receives workspaceName, branch, or workspacePath props.
+      // This information is now shown via the WorkspaceSelector component.
       renderWorkspaceView()
-      expect(capturedHeaderProps.workspaceName).toBe("Test Workspace")
-    })
-
-    it("passes branch to Header", () => {
-      renderWorkspaceView()
-      expect(capturedHeaderProps.branch).toBe("main")
-    })
-
-    it("passes workspacePath to Header", () => {
-      renderWorkspaceView()
-      expect(capturedHeaderProps.workspacePath).toBe("/test/workspace")
+      expect(capturedHeaderProps.workspaceName).toBeUndefined()
+      expect(capturedHeaderProps.branch).toBeUndefined()
+      expect(capturedHeaderProps.workspacePath).toBeUndefined()
     })
   })
 })
