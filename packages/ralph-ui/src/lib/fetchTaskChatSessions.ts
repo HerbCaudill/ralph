@@ -1,5 +1,5 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 
 /** Response from GET /api/sessions?app=task-chat&include=summary. */
 interface SessionsResponse {

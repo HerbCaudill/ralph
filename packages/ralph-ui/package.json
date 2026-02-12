@@ -33,6 +33,7 @@
   "dependencies": {
     "@herbcaudill/agent-server": "workspace:*",
     "@herbcaudill/agent-view": "workspace:*",
+    "@herbcaudill/beads-sdk": "workspace:*",
     "@herbcaudill/agent-view-theme": "workspace:*",
     "@herbcaudill/beads-view": "workspace:*",
     "@herbcaudill/components": "workspace:*",

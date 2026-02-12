@@ -3,12 +3,12 @@ import { generateId } from "./lib/generateId.js"
 import { SessionPersister } from "@herbcaudill/ralph-shared/server"
 import {
   AgentAdapter,
+  type AgentEvent,
   type AgentStartOptions,
   type ConversationContext,
   type ConversationMessage,
 } from "./agentTypes.js"
-import type { AgentEvent } from "@herbcaudill/ralph-shared"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { createAdapter, isAdapterRegistered, registerDefaultAdapters } from "./AdapterRegistry.js"
 
 /** Information about a chat session. */

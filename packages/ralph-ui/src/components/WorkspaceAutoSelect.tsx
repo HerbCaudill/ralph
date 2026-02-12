@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Navigate } from "react-router-dom"
 import { apiFetch } from "@herbcaudill/beads-view"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 
 /**
  * Fetches available workspaces from beads-server and redirects to the first one.

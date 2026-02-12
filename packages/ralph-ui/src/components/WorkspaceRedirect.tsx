@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom"
 import { getSavedWorkspacePath } from "@herbcaudill/beads-view"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { WorkspaceAutoSelect } from "./WorkspaceAutoSelect"
 
 /**

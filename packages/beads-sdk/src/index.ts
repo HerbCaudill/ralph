@@ -52,3 +52,6 @@ export {
   isProcessRunning,
   getAliveWorkspaces,
 } from "./registry.js"
+
+export { getWorkspaceId } from "./getWorkspaceId.js"
+export type { GetWorkspaceIdOptions } from "./getWorkspaceId.js"

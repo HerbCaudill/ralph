@@ -1,4 +1,4 @@
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 
 /** Default localStorage key for workspace persistence. */
 const DEFAULT_STORAGE_KEY = "ralph-workspace-path"

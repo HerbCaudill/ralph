@@ -15,9 +15,9 @@ describe("browser-safe exports", () => {
     expect("getDefaultStorageDir" in mainExports).toBe(false)
   })
 
-  it("exports browser-safe modules from main entry point", () => {
-    // These modules should remain in the main export
-    expect("getWorkspaceId" in mainExports).toBe(true)
+  it("does not export getWorkspaceId (moved to beads-sdk)", () => {
+    // getWorkspaceId was moved to @herbcaudill/beads-sdk
+    expect("getWorkspaceId" in mainExports).toBe(false)
   })
 })
 

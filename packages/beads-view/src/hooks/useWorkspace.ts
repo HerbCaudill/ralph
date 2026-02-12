@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { apiFetch, configureApiClient, getApiClientConfig } from "../lib/apiClient"
 import { beadsViewStore } from "../store/beadsViewStore"
 

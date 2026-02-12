@@ -1,5 +1,5 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { fetchSessionEvents } from "./fetchSessionEvents"
 import { extractTaskIdFromEvents, getSessionTaskId, setSessionTaskId } from "./sessionTaskIdCache"
 

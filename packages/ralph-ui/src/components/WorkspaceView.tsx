@@ -38,7 +38,7 @@ import {
   type ChatInputHandle,
   type ControlState,
 } from "@herbcaudill/agent-view"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { useWorkerName } from "@/hooks/useWorkerName"
 import { useWorkerOrchestrator } from "@/hooks/useWorkerOrchestrator"
 import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"

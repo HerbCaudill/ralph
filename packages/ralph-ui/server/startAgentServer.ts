@@ -3,7 +3,7 @@
  * and wires up the worker orchestrator for concurrent agent sessions.
  */
 import { startServer, getConfig, WorkerOrchestratorManager } from "@herbcaudill/agent-server"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { registerRalphRoutes } from "./ralphRoutes.js"
 import { createBeadsTaskSource } from "./createBeadsTaskSource.js"
 

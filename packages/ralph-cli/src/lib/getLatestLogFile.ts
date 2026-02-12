@@ -1,5 +1,5 @@
 import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
-import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 
 /**
  * Get the path to the most recent session log file.

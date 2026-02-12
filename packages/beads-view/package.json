@@ -53,6 +53,7 @@
     }
   },
   "dependencies": {
+    "@herbcaudill/beads-sdk": "workspace:*",
     "@herbcaudill/components": "workspace:*",
     "@herbcaudill/ralph-shared": "workspace:*",
     "@tabler/icons-react": "^3.36.1",
