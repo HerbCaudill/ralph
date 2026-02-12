@@ -17,7 +17,10 @@ function getBeadsServerUrl(): string {
 async function main() {
   try {
     const config = getConfig()
-    const { app } = await startServer({ ...config, customRoutes: registerRalphRoutes })
+    const { app, sessionManager } = await startServer({
+      ...config,
+      customRoutes: registerRalphRoutes,
+    })
 
     // Set up orchestrator factory keyed by workspace ID.
     // Orchestrators are created lazily on first request for a given workspace.
@@ -41,6 +44,7 @@ async function main() {
       const orchestrator = new WorkerOrchestratorManager({
         mainWorkspacePath: defaultWorkspacePath,
         taskSource,
+        sessionManager,
         maxWorkers: 3,
       })
       orchestrators.set(targetId, orchestrator)

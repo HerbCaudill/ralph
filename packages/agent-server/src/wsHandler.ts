@@ -525,6 +525,28 @@ export function handleWsConnection(
       }
     }
 
+    const onSessionCreated = ({
+      workerName,
+      sessionId,
+      taskId,
+    }: {
+      workerName: string
+      sessionId: string
+      taskId: string
+    }) => {
+      if (client.subscribedToOrchestrator && ws.readyState === 1) {
+        ws.send(
+          JSON.stringify({
+            type: "session_created",
+            workerName,
+            sessionId,
+            taskId,
+            workspaceId: client.workspaceId,
+          }),
+        )
+      }
+    }
+
     const onStateChanged = ({ state }: { state: string }) => {
       if (client.subscribedToOrchestrator && ws.readyState === 1) {
         ws.send(
@@ -556,6 +578,7 @@ export function handleWsConnection(
     orchestrator.on("worker_resumed", onWorkerResumed)
     orchestrator.on("task_started", onTaskStarted)
     orchestrator.on("task_completed", onTaskCompleted)
+    orchestrator.on("session_created", onSessionCreated)
     orchestrator.on("state_changed", onStateChanged)
     orchestrator.on("error", onOrchestratorError)
 
@@ -566,6 +589,7 @@ export function handleWsConnection(
       { event: "worker_resumed", handler: onWorkerResumed as () => void },
       { event: "task_started", handler: onTaskStarted as () => void },
       { event: "task_completed", handler: onTaskCompleted as () => void },
+      { event: "session_created", handler: onSessionCreated as () => void },
       { event: "state_changed", handler: onStateChanged as () => void },
       { event: "error", handler: onOrchestratorError as () => void },
     )
