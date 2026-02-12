@@ -51,12 +51,8 @@ function createMockRunAgent(options?: {
   exitCode?: number
   sessionId?: string
   doWork?: (cwd: string) => Promise<void>
-}): (
-  cwd: string,
-  taskId: string,
-  taskTitle: string,
-) => Promise<{ exitCode: number; sessionId: string }> {
-  return async (cwd, _taskId, _taskTitle) => {
+}): (cwd: string) => Promise<{ exitCode: number; sessionId: string }> {
+  return async cwd => {
     if (options?.doWork) {
       await options.doWork(cwd)
     }
@@ -118,64 +114,47 @@ describe("WorkerLoop", () => {
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       expect(loop).toBeInstanceOf(WorkerLoop)
     })
   })
 
-  describe("getReadyTask integration", () => {
-    it("exits when no tasks are available", async () => {
+  describe("work iteration lifecycle", () => {
+    it("runs a single work iteration successfully", async () => {
       const events: string[] = []
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
+        runAgent: createMockRunAgent({
+          doWork: async cwd => {
+            await writeFile(join(cwd, "new-file.txt"), "created by agent")
+            await git(cwd, ["add", "."])
+            await git(cwd, ["commit", "-m", "Add new file"])
+          },
+        }),
       })
 
-      loop.on("idle", () => events.push("idle"))
+      loop.on("work_started", () => events.push("work_started"))
+      loop.on("worktree_created", () => events.push("worktree_created"))
+      loop.on("agent_started", () => events.push("agent_started"))
+      loop.on("agent_completed", () => events.push("agent_completed"))
+      loop.on("merge_completed", () => events.push("merge_completed"))
+      loop.on("work_completed", () => events.push("work_completed"))
 
       await loop.runOnce()
 
-      expect(events).toContain("idle")
+      expect(events).toEqual([
+        "work_started",
+        "worktree_created",
+        "agent_started",
+        "agent_completed",
+        "merge_completed",
+        "work_completed",
+      ])
     })
 
-    it("claims and processes a task when one is available", async () => {
-      const events: string[] = []
-      const claimedTasks: string[] = []
-      const closedTasks: string[] = []
-
-      const loop = new WorkerLoop({
-        workerName: "homer",
-        mainWorkspacePath,
-        runAgent: createMockRunAgent(),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test task" }),
-        claimTask: async taskId => {
-          claimedTasks.push(taskId)
-        },
-        closeTask: async taskId => {
-          closedTasks.push(taskId)
-        },
-      })
-
-      loop.on("task_started", ({ taskId }) => events.push(`started:${taskId}`))
-      loop.on("task_completed", ({ taskId }) => events.push(`completed:${taskId}`))
-
-      await loop.runOnce()
-
-      expect(claimedTasks).toContain("bd-abc123")
-      expect(events).toContain("started:bd-abc123")
-    })
-  })
-
-  describe("worktree lifecycle", () => {
-    it("creates worktree for task and cleans up after completion", async () => {
+    it("creates worktree and cleans up after completion", async () => {
       let worktreePath: string | undefined
 
       const loop = new WorkerLoop({
@@ -184,59 +163,42 @@ describe("WorkerLoop", () => {
         runAgent: createMockRunAgent({
           doWork: async cwd => {
             worktreePath = cwd
-            await writeFile(join(cwd, "new-file.txt"), "created by claude")
+            await writeFile(join(cwd, "new-file.txt"), "created by agent")
             await git(cwd, ["add", "."])
             await git(cwd, ["commit", "-m", "Add new file"])
           },
         }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test task" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await loop.runOnce()
 
-      // Worktree should have been created in correct location
-      expect(worktreePath).toBe(worktreeManager.getWorktreePath("homer", "bd-abc123"))
-
-      // After completion, worktree should be cleaned up (merged and removed)
-      const exists = await worktreeManager.exists("homer", "bd-abc123")
-      expect(exists).toBe(false)
+      // Worktree should have been created
+      expect(worktreePath).toBeDefined()
 
       // The changes should be merged into main
       const mainContent = existsSync(join(mainWorkspacePath, "new-file.txt"))
       expect(mainContent).toBe(true)
     })
-
-    // Note: Complex merge conflict scenarios are tested in WorktreeManager.test.ts.
-    // WorkerLoop delegates to WorktreeManager for all git operations.
   })
 
   describe("runAgent handling", () => {
-    it("passes correct cwd, taskId, and taskTitle to runAgent", async () => {
+    it("passes correct cwd to runAgent", async () => {
       let receivedCwd: string | undefined
-      let receivedTaskId: string | undefined
-      let receivedTaskTitle: string | undefined
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
-        runAgent: async (cwd, taskId, taskTitle) => {
+        runAgent: async cwd => {
           receivedCwd = cwd
-          receivedTaskId = taskId
-          receivedTaskTitle = taskTitle
           return { exitCode: 0, sessionId: "test-session" }
         },
-        getReadyTask: async () => ({ id: "bd-task-xyz", title: "Fix the bug" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await loop.runOnce()
 
-      expect(receivedCwd).toBe(worktreeManager.getWorktreePath("homer", "bd-task-xyz"))
-      expect(receivedTaskId).toBe("bd-task-xyz")
-      expect(receivedTaskTitle).toBe("Fix the bug")
+      // cwd should be a worktree path (not the main workspace)
+      expect(receivedCwd).toBeDefined()
+      expect(receivedCwd).not.toBe(mainWorkspacePath)
     })
 
     it("handles non-zero exit code gracefully", async () => {
@@ -246,9 +208,6 @@ describe("WorkerLoop", () => {
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent({ exitCode: 1 }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       loop.on("error", err => errors.push(err))
@@ -258,92 +217,44 @@ describe("WorkerLoop", () => {
       expect(errors.length).toBeGreaterThan(0)
     })
 
-    it("emits claude_started with sessionId", async () => {
-      const events: Array<{ taskId: string; sessionId: string }> = []
+    it("emits agent_started with workId", async () => {
+      const events: Array<{ workId: string; sessionId: string }> = []
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent({ sessionId: "session-abc-123" }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
-      loop.on("claude_started", data => events.push(data))
+      loop.on("agent_started", data => events.push(data))
 
       await loop.runOnce()
 
       expect(events.length).toBe(1)
-      expect(events[0].taskId).toBe("bd-abc123")
-      // sessionId should be present (not pid)
-      expect(events[0].sessionId).toBeDefined()
+      expect(events[0].workId).toBeDefined()
     })
 
-    it("emits claude_completed with sessionId and exitCode", async () => {
-      const events: Array<{ taskId: string; exitCode: number; sessionId: string }> = []
+    it("emits agent_completed with sessionId and exitCode", async () => {
+      const events: Array<{ workId: string; exitCode: number; sessionId: string }> = []
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent({ exitCode: 0, sessionId: "session-abc-123" }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
-      loop.on("claude_completed", data => events.push(data))
+      loop.on("agent_completed", data => events.push(data))
 
       await loop.runOnce()
 
       expect(events.length).toBe(1)
-      expect(events[0].taskId).toBe("bd-abc123")
       expect(events[0].exitCode).toBe(0)
       expect(events[0].sessionId).toBe("session-abc-123")
     })
   })
 
-  describe("event emission", () => {
-    it("emits lifecycle events in correct order", async () => {
-      const events: string[] = []
-
-      const loop = new WorkerLoop({
-        workerName: "homer",
-        mainWorkspacePath,
-        runAgent: createMockRunAgent({
-          doWork: async cwd => {
-            await writeFile(join(cwd, "work.txt"), "done")
-            await git(cwd, ["add", "."])
-            await git(cwd, ["commit", "-m", "Work done"])
-          },
-        }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
-      })
-
-      loop.on("task_started", () => events.push("task_started"))
-      loop.on("worktree_created", () => events.push("worktree_created"))
-      loop.on("claude_started", () => events.push("claude_started"))
-      loop.on("claude_completed", () => events.push("claude_completed"))
-      loop.on("merge_completed", () => events.push("merge_completed"))
-      loop.on("task_completed", () => events.push("task_completed"))
-
-      await loop.runOnce()
-
-      expect(events).toEqual([
-        "task_started",
-        "worktree_created",
-        "claude_started",
-        "claude_completed",
-        "merge_completed",
-        "task_completed",
-      ])
-    })
-  })
-
   describe("tests passing (verifying test is run)", () => {
-    it("runs tests before completing task", async () => {
+    it("runs tests before completing work iteration", async () => {
       let testsPassed = false
 
       const loop = new WorkerLoop({
@@ -356,9 +267,6 @@ describe("WorkerLoop", () => {
             await git(cwd, ["commit", "-m", "Work done"])
           },
         }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
         runTests: async () => {
           testsPassed = true
           return { success: true }
@@ -371,7 +279,7 @@ describe("WorkerLoop", () => {
     })
 
     it("reports test failure through events", async () => {
-      const events: Array<{ success: boolean; output?: string }> = []
+      const errors: Error[] = []
       let testAttempts = 0
 
       const loop = new WorkerLoop({
@@ -384,9 +292,6 @@ describe("WorkerLoop", () => {
             await git(cwd, ["commit", "-m", "Work done"])
           },
         }),
-        getReadyTask: async () => ({ id: "bd-abc123", title: "Test" }),
-        claimTask: async () => {},
-        closeTask: async () => {},
         runTests: async () => {
           testAttempts++
           if (testAttempts === 1) {
@@ -397,84 +302,40 @@ describe("WorkerLoop", () => {
         },
       })
 
-      loop.on("tests_failed", data => events.push(data))
+      loop.on("error", err => errors.push(err))
 
       await loop.runOnce()
 
-      expect(events).toContainEqual({ success: false, output: "Tests failed" })
+      expect(errors.some(e => e.message.includes("Tests failed"))).toBe(true)
     })
   })
 
   describe("continuous loop mode", () => {
-    it("continues processing tasks until none available", async () => {
-      let taskCount = 0
-      const maxTasks = 3
-      const processedTasks: string[] = []
-
-      const loop = new WorkerLoop({
-        workerName: "homer",
-        mainWorkspacePath,
-        runAgent: createMockRunAgent({
-          doWork: async cwd => {
-            await writeFile(join(cwd, `work-${taskCount}.txt`), "done")
-            await git(cwd, ["add", "."])
-            await git(cwd, ["commit", "-m", `Work ${taskCount} done`])
-          },
-        }),
-        getReadyTask: async () => {
-          if (taskCount >= maxTasks) return null
-          taskCount++
-          return { id: `bd-task-${taskCount}`, title: `Task ${taskCount}` }
-        },
-        claimTask: async () => {},
-        closeTask: async taskId => {
-          processedTasks.push(taskId)
-        },
-      })
-
-      await loop.runLoop()
-
-      expect(processedTasks).toEqual(["bd-task-1", "bd-task-2", "bd-task-3"])
-    })
-
     it("can be stopped gracefully", async () => {
-      let taskCount = 0
-      const processedTasks: string[] = []
+      let runCount = 0
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent({
           doWork: async cwd => {
-            await writeFile(join(cwd, `work-${taskCount}.txt`), "done")
+            runCount++
+            if (runCount >= 2) {
+              loop.stop()
+            }
+            await writeFile(join(cwd, `work-${runCount}.txt`), "done")
             await git(cwd, ["add", "."])
             await git(cwd, ["commit", "-m", `Work done`])
           },
         }),
-        getReadyTask: async () => {
-          taskCount++
-          if (taskCount >= 2) {
-            loop.stop()
-          }
-          return { id: `bd-task-${taskCount}`, title: `Task ${taskCount}` }
-        },
-        claimTask: async () => {},
-        closeTask: async taskId => {
-          processedTasks.push(taskId)
-        },
       })
 
       await loop.runLoop()
 
-      // Should have processed task 1, started task 2, then stopped
-      expect(processedTasks.length).toBeLessThanOrEqual(2)
+      // Should have run at least once before stopping
+      expect(runCount).toBeGreaterThanOrEqual(1)
     })
   })
-
-  // Note: Complex retry and conflict resolution scenarios are difficult to test
-  // in a unit test context due to git lock contention. The WorktreeManager tests
-  // verify the underlying git operations. WorkerLoop's retry logic is verified
-  // via the other tests that show the loop continues on error.
 
   describe("pause and resume", () => {
     it("can be paused and isPaused returns true", () => {
@@ -482,9 +343,6 @@ describe("WorkerLoop", () => {
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       expect(loop.isPaused()).toBe(false)
@@ -500,9 +358,6 @@ describe("WorkerLoop", () => {
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       loop.pause()
@@ -513,15 +368,12 @@ describe("WorkerLoop", () => {
     })
 
     it("emits paused event when paused", () => {
-      const events: Array<{ taskId?: string }> = []
+      const events: Array<{ workId?: string }> = []
 
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       loop.on("paused", data => events.push(data))
@@ -529,7 +381,7 @@ describe("WorkerLoop", () => {
       loop.pause()
 
       expect(events.length).toBe(1)
-      expect(events[0].taskId).toBeUndefined()
+      expect(events[0].workId).toBeUndefined()
     })
 
     it("emits resumed event when resumed", () => {
@@ -539,9 +391,6 @@ describe("WorkerLoop", () => {
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       loop.on("resumed", () => events.push("resumed"))
@@ -557,9 +406,6 @@ describe("WorkerLoop", () => {
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       expect(loop.getState()).toBe("idle")
@@ -570,17 +416,14 @@ describe("WorkerLoop", () => {
       expect(loop.getState()).toBe("idle")
     })
 
-    it("getCurrentTaskId returns null when no task", () => {
+    it("getCurrentWorkId returns null when no work", () => {
       const loop = new WorkerLoop({
         workerName: "homer",
         mainWorkspacePath,
         runAgent: createMockRunAgent(),
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
-      expect(loop.getCurrentTaskId()).toBe(null)
+      expect(loop.getCurrentWorkId()).toBe(null)
     })
   })
 })

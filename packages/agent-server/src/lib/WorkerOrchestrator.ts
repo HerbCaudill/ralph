@@ -1,7 +1,6 @@
 import { EventEmitter } from "node:events"
 import {
   WorkerLoop,
-  type ReadyTask,
   type RunAgentResult,
   type WorkerState as WorkerLoopState,
 } from "./WorkerLoop.js"
@@ -24,32 +23,17 @@ export interface WorkerOrchestratorOptions {
 
   /**
    * Function to run an agent session.
-   * Receives the working directory, task ID, and task title.
+   * Receives the working directory.
+   * The agent picks its own task via `bd ready` and claims it.
    * Returns a promise with the exit code and session ID.
    */
-  runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
+  runAgent: (cwd: string) => Promise<RunAgentResult>
 
   /**
    * Function to get the count of ready tasks.
    * Used to determine how many workers to spin up.
    */
   getReadyTasksCount: () => Promise<number>
-
-  /**
-   * Function to get the next ready task for a specific worker.
-   * Should return null if no tasks are available.
-   */
-  getReadyTask: (workerName: string) => Promise<ReadyTask | null>
-
-  /**
-   * Function to claim a task (mark it as in_progress with this worker as assignee).
-   */
-  claimTask: (taskId: string, workerName: string) => Promise<void>
-
-  /**
-   * Function to close/complete a task.
-   */
-  closeTask: (taskId: string) => Promise<void>
 
   /**
    * Optional function to run tests after merge.
@@ -80,11 +64,11 @@ export interface WorkerOrchestratorEvents {
   /** Emitted when a worker is resumed */
   worker_resumed: [{ workerName: string }]
 
-  /** Emitted when a worker starts a task */
-  task_started: [{ workerName: string; taskId: string; title: string }]
+  /** Emitted when a worker starts a work iteration */
+  work_started: [{ workerName: string; workId: string }]
 
-  /** Emitted when a worker completes a task */
-  task_completed: [{ workerName: string; taskId: string }]
+  /** Emitted when a worker completes a work iteration */
+  work_completed: [{ workerName: string; workId: string }]
 
   /** Emitted when orchestrator state changes */
   state_changed: [{ state: OrchestratorState }]
@@ -99,7 +83,7 @@ export interface WorkerOrchestratorEvents {
 export interface WorkerInfo {
   workerName: string
   state: WorkerLoopState
-  currentTaskId: string | null
+  currentWorkId: string | null
 }
 
 /**
@@ -117,16 +101,14 @@ interface WorkerState {
  * - Manages a pool of up to N workers (hard-coded count, default 3)
  * - Each worker runs its own loop independently
  * - Workers are spun up based on available ready tasks
+ * - Agents pick their own tasks via `bd ready` and claim them
  * - Supports graceful shutdown (stop after current tasks complete)
  */
 export class WorkerOrchestrator extends EventEmitter {
   private maxWorkers: number
   private mainWorkspacePath: string
-  private runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
+  private runAgent: (cwd: string) => Promise<RunAgentResult>
   private getReadyTasksCount: () => Promise<number>
-  private getReadyTask: (workerName: string) => Promise<ReadyTask | null>
-  private claimTask: (taskId: string, workerName: string) => Promise<void>
-  private closeTask: (taskId: string) => Promise<void>
   private runTests?: () => Promise<{ success: boolean; output?: string }>
   private pollingInterval: number
 
@@ -141,9 +123,6 @@ export class WorkerOrchestrator extends EventEmitter {
     this.mainWorkspacePath = options.mainWorkspacePath
     this.runAgent = options.runAgent
     this.getReadyTasksCount = options.getReadyTasksCount
-    this.getReadyTask = options.getReadyTask
-    this.claimTask = options.claimTask
-    this.closeTask = options.closeTask
     this.runTests = options.runTests
     this.pollingInterval = options.pollingInterval ?? 5000
   }
@@ -303,9 +282,6 @@ export class WorkerOrchestrator extends EventEmitter {
       workerName,
       mainWorkspacePath: this.mainWorkspacePath,
       runAgent: this.runAgent,
-      getReadyTask: () => this.getReadyTask(workerName),
-      claimTask: taskId => this.claimTask(taskId, workerName),
-      closeTask: this.closeTask,
       runTests: this.runTests,
     })
 
@@ -319,21 +295,16 @@ export class WorkerOrchestrator extends EventEmitter {
     this.emit("worker_started", { workerName })
 
     // Wire up loop events
-    loop.on("task_started", ({ taskId, title }) => {
-      this.emit("task_started", { workerName, taskId, title })
+    loop.on("work_started", ({ workId }) => {
+      this.emit("work_started", { workerName, workId })
     })
 
-    loop.on("task_completed", ({ taskId }) => {
-      this.emit("task_completed", { workerName, taskId })
+    loop.on("work_completed", ({ workId }) => {
+      this.emit("work_completed", { workerName, workId })
     })
 
     loop.on("error", error => {
       this.emit("error", { workerName, error })
-    })
-
-    loop.on("idle", () => {
-      // Worker has no more tasks - the runLoop promise will handle cleanup
-      // This event can fire before the loop promise resolves, so we just log it
     })
 
     loop.on("paused", () => {
@@ -485,7 +456,7 @@ export class WorkerOrchestrator extends EventEmitter {
         states[name] = {
           workerName: name,
           state: worker.loop.getState(),
-          currentTaskId: worker.loop.getCurrentTaskId(),
+          currentWorkId: worker.loop.getCurrentWorkId(),
         }
       }
     }

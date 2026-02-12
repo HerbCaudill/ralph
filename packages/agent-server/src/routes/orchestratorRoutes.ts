@@ -181,7 +181,7 @@ export function registerOrchestratorRoutes(
     res.json({
       workerName,
       state,
-      currentTaskId: workerInfo?.currentTaskId ?? null,
+      currentWorkId: workerInfo?.currentWorkId ?? null,
     })
   })
 

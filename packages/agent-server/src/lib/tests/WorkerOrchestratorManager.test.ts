@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest"
 import { WorkerOrchestratorManager, type TaskSource } from "../WorkerOrchestratorManager.js"
-import type { ReadyTask } from "../WorkerLoop.js"
 import type {
   ChatSessionManager,
   CreateSessionOptions,
@@ -71,18 +70,13 @@ function createMockSessionManager(): {
 
 /**
  * Create a mock task source for testing.
+ * Only provides `getReadyTasksCount` for capacity planning.
  */
 function createMockTaskSource(): TaskSource & {
   getReadyTasksCount: MockInstance<[], Promise<number>>
-  getReadyTask: MockInstance<[string], Promise<ReadyTask | null>>
-  claimTask: MockInstance<[string, string], Promise<void>>
-  closeTask: MockInstance<[string], Promise<void>>
 } {
   return {
     getReadyTasksCount: vi.fn<[], Promise<number>>().mockResolvedValue(0),
-    getReadyTask: vi.fn<[string], Promise<ReadyTask | null>>().mockResolvedValue(null),
-    claimTask: vi.fn<[string, string], Promise<void>>().mockResolvedValue(undefined),
-    closeTask: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
   }
 }
 
@@ -311,11 +305,10 @@ describe("WorkerOrchestratorManager", () => {
     })
 
     it("emits session_created event when a session is created", async () => {
-      const { mockManager, createSession } = createMockSessionManager()
+      const { mockManager } = createMockSessionManager()
 
       // Set up a task to be ready
       mockTaskSource.getReadyTasksCount.mockResolvedValue(1)
-      mockTaskSource.getReadyTask.mockResolvedValue({ id: "test-task-1", title: "Test Task" })
 
       const manager = new WorkerOrchestratorManager({
         mainWorkspacePath: "/tmp/test-workspace",
@@ -326,7 +319,6 @@ describe("WorkerOrchestratorManager", () => {
       const sessionCreatedEvents: Array<{
         workerName: string
         sessionId: string
-        taskId: string
       }> = []
       manager.on("session_created", event => {
         sessionCreatedEvents.push(event)
@@ -337,42 +329,6 @@ describe("WorkerOrchestratorManager", () => {
       expect(manager).toBeDefined()
 
       await manager.stop()
-    })
-
-    it("accepts storageDir option for session resume functionality", () => {
-      const { mockManager } = createMockSessionManager()
-
-      const manager = new WorkerOrchestratorManager({
-        mainWorkspacePath: "/tmp/test-workspace",
-        taskSource: mockTaskSource,
-        sessionManager: mockManager,
-        storageDir: "/tmp/sessions",
-      })
-
-      expect(manager).toBeDefined()
-    })
-
-    it("emits session_resumed event type exists", () => {
-      const { mockManager } = createMockSessionManager()
-
-      const manager = new WorkerOrchestratorManager({
-        mainWorkspacePath: "/tmp/test-workspace",
-        taskSource: mockTaskSource,
-        sessionManager: mockManager,
-        storageDir: "/tmp/sessions",
-      })
-
-      const resumedEvents: Array<{
-        workerName: string
-        sessionId: string
-        taskId: string
-      }> = []
-      manager.on("session_resumed", event => {
-        resumedEvents.push(event)
-      })
-
-      // Verify the event type is wired up
-      expect(manager).toBeDefined()
     })
   })
 })

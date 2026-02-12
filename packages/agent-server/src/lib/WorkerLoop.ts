@@ -2,14 +2,6 @@ import { EventEmitter } from "node:events"
 import { WorktreeManager, type CleanupResult } from "./WorktreeManager.js"
 
 /**
- * Represents a task ready for work.
- */
-export interface ReadyTask {
-  id: string
-  title: string
-}
-
-/**
  * Result of running tests.
  */
 export interface TestResult {
@@ -21,7 +13,7 @@ export interface TestResult {
  * Context provided to the onMergeConflict handler.
  */
 export interface MergeConflictContext {
-  taskId: string
+  workId: string
   workerName: string
   worktreePath: string
   conflictingFiles: string[]
@@ -47,26 +39,11 @@ export interface WorkerLoopOptions {
 
   /**
    * Function to run an agent session.
-   * Receives the working directory, task ID, and task title.
+   * Receives the working directory.
+   * The agent picks its own task via `bd ready` and claims it.
    * Returns a promise with the exit code and session ID.
    */
-  runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
-
-  /**
-   * Function to get the next ready task for this worker.
-   * Should return null if no tasks are available.
-   */
-  getReadyTask: () => Promise<ReadyTask | null>
-
-  /**
-   * Function to claim a task (mark it as in_progress with this worker as assignee).
-   */
-  claimTask: (taskId: string) => Promise<void>
-
-  /**
-   * Function to close/complete a task.
-   */
-  closeTask: (taskId: string) => Promise<void>
+  runAgent: (cwd: string) => Promise<RunAgentResult>
 
   /**
    * Optional function to run tests after merge.
@@ -94,38 +71,32 @@ export type WorkerState = "idle" | "running" | "paused"
  * Events emitted by WorkerLoop.
  */
 export interface WorkerLoopEvents {
-  /** Emitted when no tasks are available */
+  /** Emitted when no tasks are available (caller determined) */
   idle: []
 
-  /** Emitted when a task is started */
-  task_started: [{ taskId: string; title: string }]
+  /** Emitted when a work iteration starts */
+  work_started: [{ workId: string }]
 
-  /** Emitted when a worktree is created for a task */
-  worktree_created: [{ taskId: string; worktreePath: string }]
+  /** Emitted when a worktree is created for a work iteration */
+  worktree_created: [{ workId: string; worktreePath: string }]
 
   /** Emitted when an agent session starts */
-  claude_started: [{ taskId: string; sessionId: string }]
+  agent_started: [{ workId: string; sessionId: string }]
 
   /** Emitted when an agent session completes */
-  claude_completed: [{ taskId: string; exitCode: number; sessionId: string }]
+  agent_completed: [{ workId: string; exitCode: number; sessionId: string }]
 
   /** Emitted when merge completes successfully */
-  merge_completed: [{ taskId: string }]
+  merge_completed: [{ workId: string }]
 
   /** Emitted when merge has conflicts */
-  merge_conflict: [{ taskId: string; hadConflicts: boolean; conflictingFiles: string[] }]
+  merge_conflict: [{ workId: string; hadConflicts: boolean; conflictingFiles: string[] }]
 
-  /** Emitted when tests pass */
-  tests_passed: [{ taskId: string }]
-
-  /** Emitted when tests fail */
-  tests_failed: [{ success: boolean; output?: string }]
-
-  /** Emitted when a task is completed */
-  task_completed: [{ taskId: string }]
+  /** Emitted when a work iteration is completed */
+  work_completed: [{ workId: string }]
 
   /** Emitted when worker is paused */
-  paused: [{ taskId?: string }]
+  paused: [{ workId?: string }]
 
   /** Emitted when worker is resumed */
   resumed: []
@@ -137,31 +108,29 @@ export interface WorkerLoopEvents {
 /**
  * The core worker loop that:
  * 1. Pulls latest main
- * 2. Creates a worktree with a task-specific branch
- * 3. Runs an agent session in the worktree
+ * 2. Creates a worktree with a work-specific branch
+ * 3. Runs an agent session in the worktree (agent picks its own task)
  * 4. On completion, merges branch into main
  * 5. Resolves any merge conflicts via the agent
  * 6. Runs tests to verify clean merge
  * 7. Cleans up worktree and branch
  * 8. Repeats
  *
- * Worker never gives up on a task - retries until successful.
+ * Worker never gives up on a work iteration - retries until successful.
  */
 export class WorkerLoop extends EventEmitter {
   private workerName: string
   private mainWorkspacePath: string
   private worktreeManager: WorktreeManager
-  private runAgent: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
-  private getReadyTask: () => Promise<ReadyTask | null>
-  private claimTask: (taskId: string) => Promise<void>
-  private closeTask: (taskId: string) => Promise<void>
+  private runAgent: (cwd: string) => Promise<RunAgentResult>
   private runTests?: () => Promise<TestResult>
   private onMergeConflict?: (context: MergeConflictContext) => Promise<"resolved" | "abort">
   private stopped = false
   private paused = false
   private pauseResolver: (() => void) | null = null
-  private currentTaskId: string | null = null
+  private currentWorkId: string | null = null
   private state: WorkerState = "idle"
+  private workCounter = 0
 
   constructor(options: WorkerLoopOptions) {
     super()
@@ -169,9 +138,6 @@ export class WorkerLoop extends EventEmitter {
     this.mainWorkspacePath = options.mainWorkspacePath
     this.worktreeManager = new WorktreeManager(options.mainWorkspacePath)
     this.runAgent = options.runAgent
-    this.getReadyTask = options.getReadyTask
-    this.claimTask = options.claimTask
-    this.closeTask = options.closeTask
     this.runTests = options.runTests
     this.onMergeConflict = options.onMergeConflict
   }
@@ -191,7 +157,7 @@ export class WorkerLoop extends EventEmitter {
   }
 
   /**
-   * Run the loop continuously until stopped or no more tasks.
+   * Run the loop continuously until stopped.
    */
   async runLoop(): Promise<void> {
     this.stopped = false
@@ -202,12 +168,9 @@ export class WorkerLoop extends EventEmitter {
       await this.waitWhilePaused()
       if (this.stopped) break
 
-      const hadWork = await this.runOnce()
-      if (!hadWork) {
-        break
-      }
+      await this.runOnce()
 
-      // Check if paused after completing a task
+      // Check if paused after completing work
       await this.waitWhilePaused()
     }
 
@@ -215,46 +178,35 @@ export class WorkerLoop extends EventEmitter {
   }
 
   /**
-   * Run a single iteration of the worker loop.
-   * Returns true if work was done, false if no tasks were available.
+   * Run a single work iteration.
+   * Creates a worktree, runs the agent (which picks its own task), merges, and cleans up.
    */
-  async runOnce(): Promise<boolean> {
-    // 1. Check for available work
-    const task = await this.getReadyTask()
-    if (!task) {
-      this.emit("idle")
-      return false
-    }
+  async runOnce(): Promise<void> {
+    const workId = this.generateWorkId()
 
     try {
-      // 2. Claim the task
-      await this.claimTask(task.id)
-      this.currentTaskId = task.id
-      this.emit("task_started", { taskId: task.id, title: task.title })
+      this.currentWorkId = workId
+      this.emit("work_started", { workId })
 
-      // 3. Pull latest main
+      // 1. Pull latest main
       await this.worktreeManager.pullLatest()
 
-      // 4. Create worktree with task-specific branch
+      // 2. Create worktree with work-specific branch
       const worktree = await this.worktreeManager.create({
         workerName: this.workerName,
-        taskId: task.id,
+        taskId: workId, // WorktreeManager uses "taskId" but we pass workId
       })
-      this.emit("worktree_created", { taskId: task.id, worktreePath: worktree.path })
+      this.emit("worktree_created", { workId, worktreePath: worktree.path })
 
-      // 5. Run agent in the worktree
-      await this.runAgentWithRetry(task.id, task.title, worktree.path)
+      // 3. Run agent in the worktree (agent picks its own task)
+      await this.runAgentWithRetry(workId, worktree.path)
 
-      // 6. Complete the task
-      await this.closeTask(task.id)
-      this.currentTaskId = null
-      this.emit("task_completed", { taskId: task.id })
-
-      return true
+      // 4. Work iteration complete
+      this.currentWorkId = null
+      this.emit("work_completed", { workId })
     } catch (error) {
-      this.currentTaskId = null
+      this.currentWorkId = null
       this.emit("error", error instanceof Error ? error : new Error(String(error)))
-      return true // We did work, even if it failed
     }
   }
 
@@ -263,10 +215,8 @@ export class WorkerLoop extends EventEmitter {
    * Worker never gives up - keeps retrying until successful.
    */
   private async runAgentWithRetry(
-    /** The task ID */
-    taskId: string,
-    /** The task title */
-    taskTitle: string,
+    /** Unique identifier for this work iteration */
+    workId: string,
     /** The worktree path where the agent runs */
     worktreePath: string,
   ): Promise<void> {
@@ -274,10 +224,10 @@ export class WorkerLoop extends EventEmitter {
 
     while (!success && !this.stopped) {
       // Run the agent session
-      this.emit("claude_started", { taskId, sessionId: "" })
-      const result = await this.runAgent(worktreePath, taskId, taskTitle)
-      this.emit("claude_completed", {
-        taskId,
+      this.emit("agent_started", { workId, sessionId: "" })
+      const result = await this.runAgent(worktreePath)
+      this.emit("agent_completed", {
+        workId,
         exitCode: result.exitCode,
         sessionId: result.sessionId,
       })
@@ -288,12 +238,12 @@ export class WorkerLoop extends EventEmitter {
       }
 
       // Attempt to merge
-      const mergeResult = await this.worktreeManager.merge(this.workerName, taskId)
+      const mergeResult = await this.worktreeManager.merge(this.workerName, workId)
 
       if (mergeResult.hadConflicts) {
         const conflictingFiles = await this.worktreeManager.getConflictingFiles()
         this.emit("merge_conflict", {
-          taskId,
+          workId,
           hadConflicts: true,
           conflictingFiles,
         })
@@ -301,7 +251,7 @@ export class WorkerLoop extends EventEmitter {
         // Handle conflict
         if (this.onMergeConflict) {
           const resolution = await this.onMergeConflict({
-            taskId,
+            workId,
             workerName: this.workerName,
             worktreePath,
             conflictingFiles,
@@ -327,31 +277,28 @@ export class WorkerLoop extends EventEmitter {
         continue // Retry
       }
 
-      this.emit("merge_completed", { taskId })
+      this.emit("merge_completed", { workId })
 
       // Run tests if configured
       if (this.runTests) {
         const testResult = await this.runTests()
 
         if (!testResult.success) {
-          this.emit("tests_failed", testResult)
+          this.emit("error", new Error(`Tests failed: ${testResult.output}`))
           // Tests failed - need to revert merge and let agent fix
-          // For now, we continue anyway (TODO: implement proper revert)
           continue
         }
-
-        this.emit("tests_passed", { taskId })
       }
 
       // Cleanup worktree (already merged)
-      await this.worktreeManager.remove(this.workerName, taskId)
+      await this.worktreeManager.remove(this.workerName, workId)
 
       success = true
     }
   }
 
   /**
-   * Stop the loop after the current task completes.
+   * Stop the loop after the current work iteration completes.
    */
   stop(): void {
     this.stopped = true
@@ -366,13 +313,13 @@ export class WorkerLoop extends EventEmitter {
 
   /**
    * Pause the worker loop. The worker will complete the current agent session
-   * but will wait before continuing to the next step or task.
+   * but will wait before continuing to the next step or work iteration.
    */
   pause(): void {
     if (this.paused) return
     this.paused = true
     this.state = "paused"
-    this.emit("paused", { taskId: this.currentTaskId ?? undefined })
+    this.emit("paused", { workId: this.currentWorkId ?? undefined })
   }
 
   /**
@@ -404,10 +351,19 @@ export class WorkerLoop extends EventEmitter {
   }
 
   /**
-   * Get the current task ID (if any).
+   * Get the current work ID (if any).
    */
-  getCurrentTaskId(): string | null {
-    return this.currentTaskId
+  getCurrentWorkId(): string | null {
+    return this.currentWorkId
+  }
+
+  /**
+   * Generate a unique work ID for a work iteration.
+   * Format: {counter}-{timestamp} to ensure uniqueness and sorting.
+   */
+  private generateWorkId(): string {
+    this.workCounter++
+    return `${this.workCounter}-${Date.now()}`
   }
 
   /**

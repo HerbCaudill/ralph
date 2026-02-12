@@ -34,8 +34,8 @@ vi.mock("@herbcaudill/components", () => ({
 
 describe("WorkerControlBar", () => {
   const mockWorkers: WorkerInfo[] = [
-    { workerName: "homer", state: "running", currentTaskId: "bd-abc123" },
-    { workerName: "marge", state: "paused", currentTaskId: "bd-def456" },
+    { workerName: "homer", state: "running", currentWorkId: "bd-abc123" },
+    { workerName: "marge", state: "paused", currentWorkId: "bd-def456" },
   ]
 
   const defaultProps = {
@@ -160,7 +160,7 @@ describe("WorkerControlBar", () => {
 
     it("disables pause on paused worker", () => {
       const pausedWorkers: WorkerInfo[] = [
-        { workerName: "homer", state: "paused", currentTaskId: null },
+        { workerName: "homer", state: "paused", currentWorkId: null },
       ]
       render(<WorkerControlBar {...defaultProps} workers={pausedWorkers} />)
 
@@ -170,7 +170,7 @@ describe("WorkerControlBar", () => {
 
     it("disables stop on idle worker", () => {
       const idleWorkers: WorkerInfo[] = [
-        { workerName: "homer", state: "idle", currentTaskId: null },
+        { workerName: "homer", state: "idle", currentWorkId: null },
       ]
       render(<WorkerControlBar {...defaultProps} workers={idleWorkers} />)
 

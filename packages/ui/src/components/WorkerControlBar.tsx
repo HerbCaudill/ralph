@@ -18,7 +18,7 @@ export type WorkerState = "idle" | "running" | "paused"
 export interface WorkerInfo {
   workerName: string
   state: WorkerState
-  currentTaskId: string | null
+  currentWorkId: string | null
 }
 
 /**
@@ -132,8 +132,8 @@ function WorkerRow({ worker, isConnected, onPause, onResume, onStop }: WorkerRow
     <div className="flex items-center justify-between gap-2 rounded bg-muted/50 px-2 py-1.5">
       <div className="flex min-w-0 flex-col">
         <span className="text-sm font-medium capitalize">{worker.workerName}</span>
-        {worker.currentTaskId && (
-          <span className="truncate text-xs text-muted-foreground">{worker.currentTaskId}</span>
+        {worker.currentWorkId && (
+          <span className="truncate text-xs text-muted-foreground">{worker.currentWorkId}</span>
         )}
       </div>
 

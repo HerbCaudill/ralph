@@ -6,15 +6,14 @@ import {
   type OrchestratorState,
   type WorkerInfo,
 } from "./WorkerOrchestrator.js"
-import { type ReadyTask, type RunAgentResult } from "./WorkerLoop.js"
+import { type RunAgentResult } from "./WorkerLoop.js"
 import type { ChatSessionManager } from "../ChatSessionManager.js"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
-import { findIncompleteSession } from "./findIncompleteSession.js"
 
 /**
- * Task source callbacks for providing ready tasks to the orchestrator.
- * These abstract away the beads integration so the manager doesn't need
- * to know about beads directly.
+ * Task source callbacks for providing task availability info to the orchestrator.
+ * The orchestrator uses this to decide how many workers to spin up.
+ * Agents pick and claim their own tasks at runtime.
  */
 export interface TaskSource {
   /**
@@ -22,23 +21,6 @@ export interface TaskSource {
    * Used to determine how many workers to spin up.
    */
   getReadyTasksCount: () => Promise<number>
-
-  /**
-   * Get the next ready task for a specific worker.
-   * Should return null if no tasks are available.
-   * Should filter for tasks that are unassigned or assigned to this worker.
-   */
-  getReadyTask: (workerName: string) => Promise<ReadyTask | null>
-
-  /**
-   * Claim a task (mark it as in_progress with this worker as assignee).
-   */
-  claimTask: (taskId: string, workerName: string) => Promise<void>
-
-  /**
-   * Close/complete a task.
-   */
-  closeTask: (taskId: string) => Promise<void>
 }
 
 /**
@@ -51,7 +33,7 @@ export interface WorkerOrchestratorManagerOptions {
   /** Path to the main workspace/repository */
   mainWorkspacePath: string
 
-  /** Task source callbacks for fetching and managing tasks */
+  /** Task source callbacks for checking task availability */
   taskSource: TaskSource
 
   /** App/prompt name for this orchestrator instance */
@@ -71,18 +53,11 @@ export interface WorkerOrchestratorManagerOptions {
   sessionManager?: ChatSessionManager
 
   /**
-   * Storage directory for session JSONL files.
-   * Required for session resume functionality.
-   * If not provided but sessionManager is set, resume functionality is disabled.
-   */
-  storageDir?: string
-
-  /**
    * Custom function to run an agent session.
    * If not provided and sessionManager is set, sessions are created via ChatSessionManager.
    * If neither is provided, throws an error.
    */
-  runAgent?: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
+  runAgent?: (cwd: string) => Promise<RunAgentResult>
 }
 
 /**
@@ -94,10 +69,7 @@ export interface WorkerOrchestratorManagerEvents extends WorkerOrchestratorEvent
   task_source_error: [{ error: Error }]
 
   /** Emitted when a session is created for a worker */
-  session_created: [{ workerName: string; sessionId: string; taskId: string }]
-
-  /** Emitted when resuming an incomplete session */
-  session_resumed: [{ workerName: string; sessionId: string; taskId: string }]
+  session_created: [{ workerName: string; sessionId: string }]
 }
 
 /**
@@ -105,14 +77,11 @@ export interface WorkerOrchestratorManagerEvents extends WorkerOrchestratorEvent
  *
  * This class provides the glue between:
  * - WorkerOrchestrator (manages concurrent workers)
- * - Task source (beads or other task/issue tracking system)
+ * - Task source (provides ready task count for capacity planning)
  * - ChatSessionManager (creates agent sessions with event streaming)
  *
- * It handles:
- * - Fetching ready tasks via provided callbacks
- * - Claiming and closing tasks
- * - Creating agent sessions via ChatSessionManager
- * - Running tests (optional)
+ * Agents pick their own tasks at runtime via `bd ready` and claim them.
+ * The orchestrator only uses task count for deciding how many workers to spin up.
  */
 export class WorkerOrchestratorManager extends EventEmitter {
   private orchestrator: WorkerOrchestrator
@@ -121,12 +90,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
   private app: string
   private runTestsEnabled: boolean
   private sessionManager?: ChatSessionManager
-  private storageDir?: string
-  private customRunAgent?: (
-    cwd: string,
-    taskId: string,
-    taskTitle: string,
-  ) => Promise<RunAgentResult>
+  private customRunAgent?: (cwd: string) => Promise<RunAgentResult>
 
   constructor(options: WorkerOrchestratorManagerOptions) {
     super()
@@ -136,7 +100,6 @@ export class WorkerOrchestratorManager extends EventEmitter {
     this.app = options.app ?? "ralph"
     this.runTestsEnabled = options.runTests ?? false
     this.sessionManager = options.sessionManager
-    this.storageDir = options.storageDir
     this.customRunAgent = options.runAgent
 
     // Create orchestrator with task source callbacks
@@ -144,11 +107,8 @@ export class WorkerOrchestratorManager extends EventEmitter {
       maxWorkers: options.maxWorkers ?? 3,
       mainWorkspacePath: this.mainWorkspacePath,
       pollingInterval: options.pollingInterval ?? 5000,
-      runAgent: (cwd, taskId, taskTitle) => this.runAgentSession(cwd, taskId, taskTitle),
+      runAgent: cwd => this.runAgentSession(cwd),
       getReadyTasksCount: () => this.getReadyTasksCount(),
-      getReadyTask: workerName => this.getReadyTask(workerName),
-      claimTask: (taskId, workerName) => this.claimTask(taskId, workerName),
-      closeTask: taskId => this.closeTask(taskId),
       runTests: this.runTestsEnabled ? () => this.runTests() : undefined,
     })
 
@@ -165,8 +125,8 @@ export class WorkerOrchestratorManager extends EventEmitter {
       "worker_stopped",
       "worker_paused",
       "worker_resumed",
-      "task_started",
-      "task_completed",
+      "work_started",
+      "work_completed",
       "state_changed",
       "error",
     ]
@@ -212,50 +172,19 @@ export class WorkerOrchestratorManager extends EventEmitter {
     }
   }
 
-  /**
-   * Get the next ready task for a worker.
-   */
-  private async getReadyTask(workerName: string): Promise<ReadyTask | null> {
-    try {
-      return await this.taskSource.getReadyTask(workerName)
-    } catch (error) {
-      this.emit("task_source_error", {
-        error: error instanceof Error ? error : new Error(String(error)),
-      })
-      return null
-    }
-  }
-
-  /**
-   * Claim a task by updating its status and assignee.
-   */
-  private async claimTask(taskId: string, workerName: string): Promise<void> {
-    await this.taskSource.claimTask(taskId, workerName)
-  }
-
-  /**
-   * Close a task after completion.
-   */
-  private async closeTask(taskId: string): Promise<void> {
-    await this.taskSource.closeTask(taskId)
-  }
-
   // ── Agent Session ─────────────────────────────────────────────────────
 
   /**
    * Run an agent session in the given directory.
+   * The agent picks its own task via `bd ready` and claims it.
    */
   private async runAgentSession(
     /** Working directory for the agent */
     cwd: string,
-    /** The task ID */
-    taskId: string,
-    /** The task title */
-    taskTitle: string,
   ): Promise<RunAgentResult> {
     // Use custom run function if provided
     if (this.customRunAgent) {
-      return this.customRunAgent(cwd, taskId, taskTitle)
+      return this.customRunAgent(cwd)
     }
 
     // Create session via ChatSessionManager
@@ -266,77 +195,28 @@ export class WorkerOrchestratorManager extends EventEmitter {
     }
 
     // Extract worker name from worktree path
-    // Path format: {basePath}/{workerName}/{taskId}
+    // Path format: {basePath}/{workerName}/{workId}
     const workerName = this.extractWorkerNameFromPath(cwd)
 
-    // Check for an incomplete session that can be resumed
-    let sessionId: string
-    let isResume = false
+    // Create a new session
+    const result = await this.sessionManager.createSession({
+      cwd,
+      app: workerName,
+      workspace: null, // Don't derive workspace from worktree path
+    })
+    const sessionId = result.sessionId
 
-    if (this.storageDir) {
-      const incompleteSessionId = findIncompleteSession(taskId, workerName, this.storageDir)
-      if (incompleteSessionId) {
-        // Verify the session exists in the session manager
-        const existingSession = this.sessionManager.getSessionInfo(incompleteSessionId)
-        if (existingSession) {
-          sessionId = incompleteSessionId
-          isResume = true
-        } else {
-          // Session file exists but not loaded in manager - create new session
-          const result = await this.sessionManager.createSession({
-            cwd,
-            app: workerName,
-            workspace: null, // Don't derive workspace from worktree path
-          })
-          sessionId = result.sessionId
-        }
-      } else {
-        // No incomplete session - create new
-        const result = await this.sessionManager.createSession({
-          cwd,
-          app: workerName,
-          workspace: null, // Don't derive workspace from worktree path
-        })
-        sessionId = result.sessionId
-      }
-    } else {
-      // No storage dir configured - can't check for incomplete sessions
-      const result = await this.sessionManager.createSession({
-        cwd,
-        app: workerName,
-        workspace: null, // Don't derive workspace from worktree path
-      })
-      sessionId = result.sessionId
-    }
+    // Emit session_created event
+    this.emit("session_created", { workerName, sessionId })
 
-    // Emit appropriate event
-    if (isResume) {
-      this.emit("session_resumed", { workerName, sessionId, taskId })
-    } else {
-      this.emit("session_created", { workerName, sessionId, taskId })
-    }
-
-    // Load the Ralph prompt
+    // Load the Ralph prompt (agent picks its own task via bd ready)
     const promptResult = loadSessionPrompt({
       templatesDir: TEMPLATES_DIR,
       cwd,
     })
 
-    // Build the prompt - if resuming, tell the agent to continue from where it left off
-    let prompt: string
-    if (isResume) {
-      prompt =
-        `${promptResult.content}\n\n` +
-        `Your assigned task: ${taskTitle}\n\n` +
-        `IMPORTANT: You are resuming an interrupted session. ` +
-        `Review your previous conversation above and continue from where you left off. ` +
-        `Do not start over - pick up where the previous session was interrupted.`
-    } else {
-      prompt = `${promptResult.content}\n\nYour assigned task: ${taskTitle}`
-    }
-
-    // Send the prompt (this is the system prompt for the session)
-    await this.sessionManager.sendMessage(sessionId, prompt, {
+    // Send just the Ralph prompt - no task assignment
+    await this.sessionManager.sendMessage(sessionId, promptResult.content, {
       isSystemPrompt: true,
     })
 
@@ -348,7 +228,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
 
   /**
    * Extract worker name from a worktree path.
-   * Path format: {basePath}/{workerName}/{taskId}
+   * Path format: {basePath}/{workerName}/{workId}
    */
   private extractWorkerNameFromPath(worktreePath: string): string {
     // Split path and get second-to-last component

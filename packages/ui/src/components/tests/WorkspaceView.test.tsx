@@ -548,7 +548,7 @@ describe("WorkspaceView worker orchestrator integration", () => {
 
     it("renders WorkerControlBar when there are active workers", () => {
       mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
       }
       renderWorkspaceView()
       expect(screen.getByTestId("worker-control-bar")).toBeInTheDocument()
@@ -556,8 +556,8 @@ describe("WorkspaceView worker orchestrator integration", () => {
 
     it("passes workers array to WorkerControlBar", () => {
       mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
-        Homer: { workerName: "Homer", state: "paused", currentTaskId: "r-def456" },
+        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
+        Homer: { workerName: "Homer", state: "paused", currentWorkId: "r-def456" },
       }
       renderWorkspaceView()
 
@@ -566,19 +566,19 @@ describe("WorkspaceView worker orchestrator integration", () => {
       expect(workers).toContainEqual({
         workerName: "Ralph",
         state: "running",
-        currentTaskId: "r-abc123",
+        currentWorkId: "r-abc123",
       })
       expect(workers).toContainEqual({
         workerName: "Homer",
         state: "paused",
-        currentTaskId: "r-def456",
+        currentWorkId: "r-def456",
       })
     })
 
     it("passes isStoppingAfterCurrent when orchestrator is stopping", () => {
       mockOrchestratorState = "stopping"
       mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
       }
       renderWorkspaceView()
 
@@ -587,7 +587,7 @@ describe("WorkspaceView worker orchestrator integration", () => {
 
     it("passes isConnected to WorkerControlBar", () => {
       mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
       }
       renderWorkspaceView()
 
@@ -599,7 +599,7 @@ describe("WorkspaceView worker orchestrator integration", () => {
     beforeEach(() => {
       beadsMocks.selectedTaskId = null
       mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
       }
     })
 

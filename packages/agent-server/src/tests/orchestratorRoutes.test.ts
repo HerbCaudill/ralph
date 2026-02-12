@@ -48,7 +48,7 @@ function createMockOrchestrator(): Record<string, unknown> & WorkerOrchestratorM
     }),
     // Helper to add workers for testing
     _addWorker: (name: string, taskId: string | null = null) => {
-      workerStates[name] = { workerName: name, state: "running", currentTaskId: taskId }
+      workerStates[name] = { workerName: name, state: "running", currentWorkId: taskId }
     },
   } as unknown as Record<string, unknown> & WorkerOrchestratorManager
 }
@@ -236,8 +236,8 @@ describe("orchestratorRoutes", () => {
 
         expect(res.status).toBe(200)
         expect(data.workers).toEqual({
-          homer: { workerName: "homer", state: "running", currentTaskId: "task-1" },
-          marge: { workerName: "marge", state: "running", currentTaskId: "task-2" },
+          homer: { workerName: "homer", state: "running", currentWorkId: "task-1" },
+          marge: { workerName: "marge", state: "running", currentWorkId: "task-2" },
         })
       } finally {
         await close()
@@ -272,7 +272,7 @@ describe("orchestratorRoutes", () => {
         expect(data).toEqual({
           workerName: "homer",
           state: "running",
-          currentTaskId: "task-1",
+          currentWorkId: "task-1",
         })
       } finally {
         await close()

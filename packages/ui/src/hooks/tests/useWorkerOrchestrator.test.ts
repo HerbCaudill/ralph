@@ -175,8 +175,8 @@ describe("useWorkerOrchestrator", () => {
           maxWorkers: 5,
           activeWorkerCount: 2,
           workers: {
-            Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
-            Herb: { workerName: "Herb", state: "idle", currentTaskId: null },
+            Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
+            Herb: { workerName: "Herb", state: "idle", currentWorkId: null },
           },
           workspaceId: TEST_WORKSPACE_ID,
         })
@@ -187,8 +187,8 @@ describe("useWorkerOrchestrator", () => {
         expect(result.current.maxWorkers).toBe(5)
         expect(result.current.activeWorkerCount).toBe(2)
         expect(result.current.workers).toEqual({
-          Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
-          Herb: { workerName: "Herb", state: "idle", currentTaskId: null },
+          Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
+          Herb: { workerName: "Herb", state: "idle", currentWorkId: null },
         })
       })
     })
@@ -262,7 +262,7 @@ describe("useWorkerOrchestrator", () => {
         expect(result.current.workers["Ralph"]).toEqual({
           workerName: "Ralph",
           state: "running",
-          currentTaskId: null,
+          currentWorkId: null,
         })
       })
     })
@@ -360,7 +360,7 @@ describe("useWorkerOrchestrator", () => {
           maxWorkers: 3,
           activeWorkerCount: 1,
           workers: {
-            Ralph: { workerName: "Ralph", state: "paused", currentTaskId: "r-abc123" },
+            Ralph: { workerName: "Ralph", state: "paused", currentWorkId: "r-abc123" },
           },
           workspaceId: TEST_WORKSPACE_ID,
         })
@@ -385,8 +385,8 @@ describe("useWorkerOrchestrator", () => {
     })
   })
 
-  describe("task lifecycle events", () => {
-    it("should update worker task when receiving task_started message", async () => {
+  describe("work lifecycle events", () => {
+    it("should update worker workId when receiving work_started message", async () => {
       const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
       const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
 
@@ -409,23 +409,22 @@ describe("useWorkerOrchestrator", () => {
         expect(result.current.workers["Ralph"]).toBeDefined()
       })
 
-      // Start a task
+      // Start work
       act(() => {
         ws.simulateMessage({
-          type: "task_started",
+          type: "work_started",
           workerName: "Ralph",
-          taskId: "r-xyz789",
-          title: "Fix the bug",
+          workId: "1-1234567890",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
 
       await waitFor(() => {
-        expect(result.current.workers["Ralph"]?.currentTaskId).toBe("r-xyz789")
+        expect(result.current.workers["Ralph"]?.currentWorkId).toBe("1-1234567890")
       })
     })
 
-    it("should clear worker task when receiving task_completed message", async () => {
+    it("should clear worker workId when receiving work_completed message", async () => {
       const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
       const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
 
@@ -435,7 +434,7 @@ describe("useWorkerOrchestrator", () => {
 
       const ws = MockWebSocket.instances[0]
 
-      // Set up a worker with a task
+      // Set up a worker with a work iteration
       act(() => {
         ws.simulateMessage({
           type: "orchestrator_state",
@@ -443,28 +442,28 @@ describe("useWorkerOrchestrator", () => {
           maxWorkers: 3,
           activeWorkerCount: 1,
           workers: {
-            Ralph: { workerName: "Ralph", state: "running", currentTaskId: "r-abc123" },
+            Ralph: { workerName: "Ralph", state: "running", currentWorkId: "1-1234567890" },
           },
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
 
       await waitFor(() => {
-        expect(result.current.workers["Ralph"]?.currentTaskId).toBe("r-abc123")
+        expect(result.current.workers["Ralph"]?.currentWorkId).toBe("1-1234567890")
       })
 
-      // Complete the task
+      // Complete the work
       act(() => {
         ws.simulateMessage({
-          type: "task_completed",
+          type: "work_completed",
           workerName: "Ralph",
-          taskId: "r-abc123",
+          workId: "1-1234567890",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
 
       await waitFor(() => {
-        expect(result.current.workers["Ralph"]?.currentTaskId).toBeNull()
+        expect(result.current.workers["Ralph"]?.currentWorkId).toBeNull()
       })
     })
   })
@@ -755,7 +754,6 @@ describe("useWorkerOrchestrator", () => {
           type: "session_created",
           workerName: "Ralph",
           sessionId: "session-abc123",
-          taskId: "r-xyz789",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
@@ -770,7 +768,6 @@ describe("useWorkerOrchestrator", () => {
           type: "session_created",
           workerName: "Homer",
           sessionId: "session-def456",
-          taskId: "r-uvw123",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
@@ -799,7 +796,6 @@ describe("useWorkerOrchestrator", () => {
           type: "session_created",
           workerName: "Ralph",
           sessionId: "session-abc123",
-          taskId: "r-xyz789",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
@@ -808,7 +804,6 @@ describe("useWorkerOrchestrator", () => {
         expect(onSessionCreated).toHaveBeenCalledWith({
           workerName: "Ralph",
           sessionId: "session-abc123",
-          taskId: "r-xyz789",
         })
       })
     })
@@ -832,7 +827,6 @@ describe("useWorkerOrchestrator", () => {
           type: "session_created",
           workerName: "Ralph",
           sessionId: "session-abc123",
-          taskId: "r-xyz789",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
@@ -847,7 +841,6 @@ describe("useWorkerOrchestrator", () => {
           type: "session_created",
           workerName: "Homer",
           sessionId: "session-def456",
-          taskId: "r-uvw123",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })
@@ -873,7 +866,6 @@ describe("useWorkerOrchestrator", () => {
           type: "session_created",
           workerName: "Ralph",
           sessionId: "session-abc123",
-          taskId: "r-xyz789",
           workspaceId: TEST_WORKSPACE_ID,
         })
       })

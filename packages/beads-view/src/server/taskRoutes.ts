@@ -248,6 +248,23 @@ export function registerTaskRoutes({ app, getBeadsClient }: TaskRoutesOptions): 
       }
 
       const beads = getBeadsClient(workspace)
+
+      // Conflict detection: if claiming a task, check it's not already claimed by another agent
+      if ((status === "in_progress" || assignee) && assignee) {
+        const current = await beads.show(id)
+        if (current.length > 0) {
+          const task = current[0] as { status?: string; assignee?: string }
+          if (task.status === "in_progress" && task.assignee && task.assignee !== assignee) {
+            res.status(409).json({
+              ok: false,
+              error: `Task already claimed by ${task.assignee}`,
+              claimedBy: task.assignee,
+            })
+            return
+          }
+        }
+      }
+
       const issues = await beads.update(id, {
         title,
         description,

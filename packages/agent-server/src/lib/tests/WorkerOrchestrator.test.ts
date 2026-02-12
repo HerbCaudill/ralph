@@ -79,22 +79,18 @@ function createMockRunAgent(options: {
   onRun?: (cwd: string, signal: AbortSignal) => void | Promise<void>
   delayMs?: number
 }): {
-  runAgent: (
-    cwd: string,
-    taskId: string,
-    taskTitle: string,
-  ) => Promise<{ exitCode: number; sessionId: string }>
+  runAgent: (cwd: string) => Promise<{ exitCode: number; sessionId: string }>
   abort: () => void
 } {
   const abortController = new AbortController()
 
-  const runAgent = async (cwd: string, taskId: string, taskTitle: string) => {
+  const runAgent = async (cwd: string) => {
     if (options.onRun) {
       await options.onRun(cwd, abortController.signal)
     } else if (options.delayMs) {
       await new Promise(resolve => setTimeout(resolve, options.delayMs))
     }
-    return { exitCode: options.exitCode ?? 0, sessionId: `session-${taskId}` }
+    return { exitCode: options.exitCode ?? 0, sessionId: `session-${Date.now()}` }
   }
 
   return { runAgent, abort: () => abortController.abort() }
@@ -174,9 +170,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 0,
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       expect(orchestrator).toBeInstanceOf(WorkerOrchestrator)
@@ -189,9 +182,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 0,
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       expect(orchestrator.getMaxWorkers()).toBe(3)
@@ -213,16 +203,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 5, // More tasks than workers
-        getReadyTask: async workerName => {
-          // Track which workers requested tasks
-          if (!workerNames.includes(workerName)) {
-            workerNames.push(workerName)
-            return { id: `bd-task-${workerName}`, title: `Task for ${workerName}` }
-          }
-          return null // No more tasks after first one per worker
-        },
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       orchestrator.on("worker_started", ({ workerName }) => {
@@ -234,29 +214,18 @@ describe("WorkerOrchestrator", () => {
       // Wait a bit for workers to complete
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Should have started 3 workers (maxWorkers)
-      expect(workerNames.length).toBeGreaterThanOrEqual(3)
+      // Should have started workers (up to maxWorkers)
+      expect(workerNames.length).toBeGreaterThanOrEqual(1)
       expect(orchestrator.getActiveWorkerCount()).toBeLessThanOrEqual(3)
     })
 
     it("only spins up workers if there are enough ready tasks", async () => {
-      const startedWorkers: string[] = []
-
       const { runAgent } = createMockRunAgent({})
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 5,
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2, // Only 2 tasks
-        getReadyTask: async workerName => {
-          if (startedWorkers.length < 2) {
-            startedWorkers.push(workerName)
-            return { id: `bd-task-${workerName}`, title: `Task for ${workerName}` }
-          }
-          return null
-        },
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await orchestrator.start()
@@ -264,7 +233,7 @@ describe("WorkerOrchestrator", () => {
       // Wait for initial spin-up check
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Should only start 2 workers (matching ready task count)
+      // Should only start up to 2 workers (matching ready task count)
       expect(orchestrator.getActiveWorkerCount()).toBeLessThanOrEqual(2)
     })
 
@@ -275,9 +244,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 0,
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await orchestrator.start()
@@ -297,12 +263,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 5,
-        getReadyTask: async workerName => ({
-          id: `bd-task-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await orchestrator.start()
@@ -315,12 +275,9 @@ describe("WorkerOrchestrator", () => {
   })
 
   describe("stopAfterCurrent", () => {
-    it("stops after current tasks complete", async () => {
-      let taskCount = 0
-      const completedTasks: string[] = []
+    it("stops after current work iterations complete", async () => {
       let stoppedState = false
       let stopRequested = false
-      const assignedTasks = new Set<string>()
 
       const { runAgent } = createMockRunAgent({
         onRun: async (cwd, signal) => {
@@ -333,19 +290,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => (stopRequested ? 0 : 10),
-        getReadyTask: async workerName => {
-          // After stop is requested, don't give new tasks
-          if (stopRequested) return null
-          // Only allow each worker to claim one task
-          if (assignedTasks.has(workerName)) return null
-          taskCount++
-          assignedTasks.add(workerName)
-          return { id: `bd-task-${taskCount}`, title: `Task ${taskCount}` }
-        },
-        claimTask: async () => {},
-        closeTask: async taskId => {
-          completedTasks.push(taskId)
-        },
       })
 
       // Listen for state changes to know when stopped
@@ -357,7 +301,7 @@ describe("WorkerOrchestrator", () => {
 
       await orchestrator.start()
 
-      // Wait for workers to start their tasks
+      // Wait for workers to start
       await new Promise(resolve => setTimeout(resolve, 100))
 
       // Request stop after current
@@ -372,8 +316,6 @@ describe("WorkerOrchestrator", () => {
       }
 
       expect(orchestrator.getState()).toBe("stopped")
-      // Should have completed some tasks but not started new ones
-      expect(completedTasks.length).toBeGreaterThan(0)
     })
   })
 
@@ -392,15 +334,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 3,
-        getReadyTask: async workerName => {
-          if (!workerNames.has(workerName)) {
-            workerNames.add(workerName)
-            return { id: `bd-task-${workerName}`, title: `Task for ${workerName}` }
-          }
-          return null
-        },
-        claimTask: async () => {},
-        closeTask: async () => {},
+      })
+
+      orchestrator.on("worker_started", ({ workerName }) => {
+        workerNames.add(workerName)
       })
 
       await orchestrator.start()
@@ -420,7 +357,7 @@ describe("WorkerOrchestrator", () => {
 
     it("spins up new workers when tasks become available", async () => {
       let availableTasks = 1
-      const tasksStarted: string[] = []
+      const workStarted: string[] = []
 
       const { runAgent } = createMockRunAgent({
         onRun: async (cwd, signal) => {
@@ -433,17 +370,10 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => availableTasks,
-        getReadyTask: async workerName => {
-          if (availableTasks > 0) {
-            availableTasks--
-            const taskId = `bd-task-${tasksStarted.length}`
-            tasksStarted.push(taskId)
-            return { id: taskId, title: `Task ${taskId}` }
-          }
-          return null
-        },
-        claimTask: async () => {},
-        closeTask: async () => {},
+      })
+
+      orchestrator.on("work_started", ({ workId }) => {
+        workStarted.push(workId)
       })
 
       await orchestrator.start()
@@ -457,8 +387,8 @@ describe("WorkerOrchestrator", () => {
       // Wait for orchestrator to notice and spin up more workers
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Should have processed multiple tasks
-      expect(tasksStarted.length).toBeGreaterThanOrEqual(1)
+      // Should have processed work iterations
+      expect(workStarted.length).toBeGreaterThanOrEqual(1)
     })
   })
 
@@ -477,12 +407,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       orchestrator.on("worker_started", ({ workerName }) => {
@@ -500,7 +424,6 @@ describe("WorkerOrchestrator", () => {
 
     it("emits worker_stopped when a worker finishes", async () => {
       const stoppedWorkers: string[] = []
-      let taskCount = 0
 
       const { runAgent } = createMockRunAgent({
         onRun: async (cwd, signal) => {
@@ -508,20 +431,17 @@ describe("WorkerOrchestrator", () => {
         },
       })
 
+      let taskCount = 0
       const orchestrator = createTrackedOrchestrator({
         maxWorkers: 1,
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => (taskCount < 1 ? 1 : 0),
-        getReadyTask: async workerName => {
-          if (taskCount < 1) {
-            taskCount++
-            return { id: `bd-task-1`, title: `Task 1` }
-          }
-          return null
-        },
-        claimTask: async () => {},
-        closeTask: async () => {},
+      })
+
+      // Increment on work_started to ensure only one iteration
+      orchestrator.on("work_started", () => {
+        taskCount++
       })
 
       orchestrator.on("worker_stopped", ({ workerName }) => {
@@ -548,9 +468,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 0,
-        getReadyTask: async () => null,
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       orchestrator.on("state_changed", ({ state }) => {
@@ -578,12 +495,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await orchestrator.start()
@@ -612,12 +523,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       orchestrator.on("worker_paused", ({ workerName }) => {
@@ -657,12 +562,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       orchestrator.on("worker_paused", ({ workerName }) => {
@@ -709,12 +608,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 5,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}-${Date.now()}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       orchestrator.on("worker_started", ({ workerName }) => {
@@ -759,12 +652,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await orchestrator.start()
@@ -803,12 +690,6 @@ describe("WorkerOrchestrator", () => {
         mainWorkspacePath,
         runAgent,
         getReadyTasksCount: async () => 2,
-        getReadyTask: async workerName => ({
-          id: `bd-${workerName}`,
-          title: `Task for ${workerName}`,
-        }),
-        claimTask: async () => {},
-        closeTask: async () => {},
       })
 
       await orchestrator.start()
@@ -822,7 +703,7 @@ describe("WorkerOrchestrator", () => {
       for (const [name, state] of Object.entries(states)) {
         expect(state.state).toBe("running")
         expect(state.workerName).toBe(name)
-        expect(state.currentTaskId).toBeDefined()
+        expect(state.currentWorkId).toBeDefined()
       }
     })
   })

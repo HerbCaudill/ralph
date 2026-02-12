@@ -16,7 +16,7 @@ export type WorkerState = "idle" | "running" | "paused"
 export interface WorkerInfo {
   workerName: string
   state: WorkerState
-  currentTaskId: string | null
+  currentWorkId: string | null
 }
 
 /**
@@ -25,7 +25,6 @@ export interface WorkerInfo {
 export interface SessionCreatedEvent {
   workerName: string
   sessionId: string
-  taskId: string
 }
 
 /**
@@ -182,7 +181,7 @@ export function useWorkerOrchestrator(
             [workerName]: {
               workerName,
               state: "running",
-              currentTaskId: null,
+              currentWorkId: null,
             },
           }))
           break
@@ -228,23 +227,23 @@ export function useWorkerOrchestrator(
           break
         }
 
-        case "task_started": {
+        case "work_started": {
           const workerName = data.workerName as string
-          const taskId = data.taskId as string
+          const workId = data.workId as string
           setWorkers(prev => {
             if (!prev[workerName]) return prev
             return {
               ...prev,
               [workerName]: {
                 ...prev[workerName],
-                currentTaskId: taskId,
+                currentWorkId: workId,
               },
             }
           })
           break
         }
 
-        case "task_completed": {
+        case "work_completed": {
           const workerName = data.workerName as string
           setWorkers(prev => {
             if (!prev[workerName]) return prev
@@ -252,7 +251,7 @@ export function useWorkerOrchestrator(
               ...prev,
               [workerName]: {
                 ...prev[workerName],
-                currentTaskId: null,
+                currentWorkId: null,
               },
             }
           })
@@ -262,7 +261,6 @@ export function useWorkerOrchestrator(
         case "session_created": {
           const sessionId = data.sessionId as string
           const workerName = data.workerName as string
-          const taskId = data.taskId as string
 
           // Track this session as active
           setActiveSessionIds(prev => {
@@ -274,7 +272,7 @@ export function useWorkerOrchestrator(
           setLatestSessionId(sessionId)
 
           // Invoke callback if provided
-          onSessionCreatedRef.current?.({ workerName, sessionId, taskId })
+          onSessionCreatedRef.current?.({ workerName, sessionId })
           break
         }
 

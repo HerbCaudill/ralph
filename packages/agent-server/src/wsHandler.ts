@@ -490,35 +490,26 @@ export function handleWsConnection(
       }
     }
 
-    const onTaskStarted = ({
-      workerName,
-      taskId,
-      title,
-    }: {
-      workerName: string
-      taskId: string
-      title: string
-    }) => {
+    const onWorkStarted = ({ workerName, workId }: { workerName: string; workId: string }) => {
       if (client.subscribedToOrchestrator && ws.readyState === 1) {
         ws.send(
           JSON.stringify({
-            type: "task_started",
+            type: "work_started",
             workerName,
-            taskId,
-            title,
+            workId,
             workspaceId: client.workspaceId,
           }),
         )
       }
     }
 
-    const onTaskCompleted = ({ workerName, taskId }: { workerName: string; taskId: string }) => {
+    const onWorkCompleted = ({ workerName, workId }: { workerName: string; workId: string }) => {
       if (client.subscribedToOrchestrator && ws.readyState === 1) {
         ws.send(
           JSON.stringify({
-            type: "task_completed",
+            type: "work_completed",
             workerName,
-            taskId,
+            workId,
             workspaceId: client.workspaceId,
           }),
         )
@@ -528,11 +519,9 @@ export function handleWsConnection(
     const onSessionCreated = ({
       workerName,
       sessionId,
-      taskId,
     }: {
       workerName: string
       sessionId: string
-      taskId: string
     }) => {
       if (client.subscribedToOrchestrator && ws.readyState === 1) {
         ws.send(
@@ -540,7 +529,6 @@ export function handleWsConnection(
             type: "session_created",
             workerName,
             sessionId,
-            taskId,
             workspaceId: client.workspaceId,
           }),
         )
@@ -576,8 +564,8 @@ export function handleWsConnection(
     orchestrator.on("worker_stopped", onWorkerStopped)
     orchestrator.on("worker_paused", onWorkerPaused)
     orchestrator.on("worker_resumed", onWorkerResumed)
-    orchestrator.on("task_started", onTaskStarted)
-    orchestrator.on("task_completed", onTaskCompleted)
+    orchestrator.on("work_started", onWorkStarted)
+    orchestrator.on("work_completed", onWorkCompleted)
     orchestrator.on("session_created", onSessionCreated)
     orchestrator.on("state_changed", onStateChanged)
     orchestrator.on("error", onOrchestratorError)
@@ -587,8 +575,8 @@ export function handleWsConnection(
       { event: "worker_stopped", handler: onWorkerStopped as () => void },
       { event: "worker_paused", handler: onWorkerPaused as () => void },
       { event: "worker_resumed", handler: onWorkerResumed as () => void },
-      { event: "task_started", handler: onTaskStarted as () => void },
-      { event: "task_completed", handler: onTaskCompleted as () => void },
+      { event: "work_started", handler: onWorkStarted as () => void },
+      { event: "work_completed", handler: onWorkCompleted as () => void },
       { event: "session_created", handler: onSessionCreated as () => void },
       { event: "state_changed", handler: onStateChanged as () => void },
       { event: "error", handler: onOrchestratorError as () => void },

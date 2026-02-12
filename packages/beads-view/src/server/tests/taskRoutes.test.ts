@@ -364,6 +364,79 @@ describe("registerTaskRoutes", () => {
       })
     })
 
+    it("returns 409 when task is already claimed by another agent", async () => {
+      const beads = createMockBeadsClient({
+        show: vi
+          .fn()
+          .mockResolvedValue([{ id: "task-1", status: "in_progress", assignee: "homer" }]),
+      })
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBeadsClient: () => beads })
+
+      const handler = routes.patch.get("/api/tasks/:id")!
+      const { req, res } = createMockReqRes({
+        params: { id: "task-1" },
+        body: { status: "in_progress", assignee: "marge" },
+      })
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(409)
+      expect(res.json).toHaveBeenCalledWith({
+        ok: false,
+        error: "Task already claimed by homer",
+        claimedBy: "homer",
+      })
+      // Should NOT have called update
+      expect(beads.update).not.toHaveBeenCalled()
+    })
+
+    it("allows claiming a task if already assigned to the same agent", async () => {
+      const beads = createMockBeadsClient({
+        show: vi
+          .fn()
+          .mockResolvedValue([{ id: "task-1", status: "in_progress", assignee: "homer" }]),
+        update: vi
+          .fn()
+          .mockResolvedValue([{ id: "task-1", status: "in_progress", assignee: "homer" }]),
+      })
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBeadsClient: () => beads })
+
+      const handler = routes.patch.get("/api/tasks/:id")!
+      const { req, res } = createMockReqRes({
+        params: { id: "task-1" },
+        body: { status: "in_progress", assignee: "homer" },
+      })
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(beads.update).toHaveBeenCalled()
+    })
+
+    it("allows claiming an unclaimed task", async () => {
+      const beads = createMockBeadsClient({
+        show: vi.fn().mockResolvedValue([{ id: "task-1", status: "open" }]),
+        update: vi
+          .fn()
+          .mockResolvedValue([{ id: "task-1", status: "in_progress", assignee: "homer" }]),
+      })
+      const { app, routes } = createMockApp()
+      registerTaskRoutes({ app, getBeadsClient: () => beads })
+
+      const handler = routes.patch.get("/api/tasks/:id")!
+      const { req, res } = createMockReqRes({
+        params: { id: "task-1" },
+        body: { status: "in_progress", assignee: "homer" },
+      })
+
+      await handler(req, res)
+
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(beads.update).toHaveBeenCalled()
+    })
+
     it("returns 404 when update returns empty array", async () => {
       const beads = createMockBeadsClient({
         update: vi.fn().mockResolvedValue([]),

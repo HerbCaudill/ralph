@@ -132,7 +132,7 @@ export { WorkerLoop } from "./lib/WorkerLoop.js"
 export type {
   WorkerLoopOptions,
   WorkerLoopEvents,
-  ReadyTask,
+  RunAgentResult,
   TestResult,
   MergeConflictContext,
   WorkerState,
