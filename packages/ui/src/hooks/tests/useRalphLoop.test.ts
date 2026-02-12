@@ -7,6 +7,9 @@ import { renderHook, act, waitFor } from "@testing-library/react"
  * These tests verify that the hook correctly handles messages from the worker.
  * The worker sends events scoped to a workspaceId, and the hook must filter
  * and handle them to update its state correctly.
+ *
+ * NOTE: This hook is now focused on session event subscription only.
+ * Loop management (start, stop, stop-after-current) is handled by useWorkerOrchestrator.
  */
 
 const TEST_WORKSPACE_ID = "herbcaudill/ralph"
@@ -230,7 +233,7 @@ describe("useRalphLoop", () => {
     })
   })
 
-  describe("start button enabled state", () => {
+  describe("button enabled state helper", () => {
     it("should enable start when connected and idle (reproduces P0 bug r-0wsce)", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { getControlBarButtonStates, controlStateToRalphStatus } =
@@ -430,18 +433,9 @@ describe("useRalphLoop", () => {
   })
 
   describe("control state persistence across reload", () => {
-    it("should re-persist controlState to localStorage when session_restored arrives with running state (r-gjirp)", async () => {
-      // This test reproduces the race condition bug where:
-      // 1. localStorage has 'running' state saved from a previous session
-      // 2. On mount, subscribe_workspace triggers state_change:'idle' which clears localStorage
-      // 3. session_restored arrives with controlState:'running' and restores React state
-      // 4. BUG: localStorage is not re-persisted, so on next remount loadWorkspaceState() returns null
-      //
-      // The fix: re-persist controlState to localStorage in the session_restored handler
-
+    it("should re-persist session ID to localStorage when session_restored arrives", async () => {
       // Setup: localStorage has a running session
       localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
 
       const { useRalphLoop } = await import("../useRalphLoop")
       renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
@@ -460,7 +454,7 @@ describe("useRalphLoop", () => {
       })
 
       // At this point, localStorage should have been cleared by the state_change handler
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBeNull()
 
       // Now the worker sends session_restored with the original running state
       act(() => {
@@ -472,107 +466,15 @@ describe("useRalphLoop", () => {
         })
       })
 
-      // CRITICAL: localStorage should be re-persisted with 'running' so the next remount works
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
-    })
-
-    it("should re-persist controlState to localStorage when session_restored arrives with paused state (r-gjirp)", async () => {
-      // Same race condition bug, but for paused state
-
-      // Setup: localStorage has a paused session
-      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "paused")
-
-      const { useRalphLoop } = await import("../useRalphLoop")
-      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      // Flush the deferred subscription
-      await flushSubscription()
-
-      // Simulate the race condition: worker sends state_change:'idle' first
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "state_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          state: "idle",
-        })
-      })
-
-      // At this point, localStorage should have been cleared
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
-
-      // Now the worker sends session_restored with the original paused state
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "session_restored",
-          workspaceId: TEST_WORKSPACE_ID,
-          sessionId: "previous-session-id",
-          controlState: "paused",
-        })
-      })
-
-      // CRITICAL: localStorage should be re-persisted with 'paused' so the next remount works
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("paused")
-    })
-
-    it("should persist controlState to localStorage when running", async () => {
-      const { useRalphLoop } = await import("../useRalphLoop")
-      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      // Simulate Ralph starting and running
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "state_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          state: "running",
-        })
-      })
-
-      // Control state should be persisted to localStorage
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
-    })
-
-    it("should persist controlState to localStorage when paused", async () => {
-      const { useRalphLoop } = await import("../useRalphLoop")
-      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      // Simulate Ralph pausing
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "state_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          state: "paused",
-        })
-      })
-
-      // Control state should be persisted to localStorage
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("paused")
-    })
-
-    it("should clear controlState from localStorage when idle", async () => {
-      // Pre-set the state
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
-
-      const { useRalphLoop } = await import("../useRalphLoop")
-      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      // Simulate Ralph stopping
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "state_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          state: "idle",
-        })
-      })
-
-      // Control state should be cleared from localStorage
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+      // Session ID should be re-persisted
+      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBe(
+        "previous-session-id",
+      )
     })
 
     it("should clear session ID from localStorage when transitioning to idle (r-3lq9v)", async () => {
-      // Pre-set both session ID and state
+      // Pre-set session ID
       localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
 
       const { useRalphLoop } = await import("../useRalphLoop")
       renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
@@ -586,84 +488,13 @@ describe("useRalphLoop", () => {
         })
       })
 
-      // BOTH control state AND session ID should be cleared from localStorage
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBeNull()
+      // Session ID should be cleared from localStorage
       expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBeNull()
-    })
-
-    it("should restore controlState from localStorage on mount and send to worker", async () => {
-      // Simulate a previous running state
-      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
-
-      const { useRalphLoop } = await import("../useRalphLoop")
-      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      // Flush the deferred subscription
-      await flushSubscription()
-
-      const calls = mockWorkerInstance.port.getPostMessageCalls()
-
-      // Should send restore_session with the saved control state
-      expect(calls).toContainEqual({
-        type: "restore_session",
-        workspaceId: TEST_WORKSPACE_ID,
-        sessionId: "previous-session-id",
-        controlState: "running",
-      })
-    })
-
-    it("should re-persist session ID to localStorage when session_restored arrives after state_change:idle clears it (r-29gl2)", async () => {
-      // This test reproduces the core reload bug:
-      // 1. localStorage has a saved session + running state
-      // 2. On reload, subscribe_workspace sends state_change:idle → clearWorkspaceSession()
-      // 3. session_restored arrives but session ID is already gone from localStorage
-      // 4. If user reloads AGAIN, there's no session to restore
-      //
-      // The fix: re-persist sessionId in the session_restored handler
-
-      localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "active-session-999")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
-
-      const { useRalphLoop } = await import("../useRalphLoop")
-      renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      await flushSubscription()
-
-      // Step 1: Worker sends state_change:idle from subscribe_workspace initial sync
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "state_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          state: "idle",
-        })
-      })
-
-      // Session ID should be cleared at this point
-      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBeNull()
-
-      // Step 2: Worker sends session_restored
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "session_restored",
-          workspaceId: TEST_WORKSPACE_ID,
-          sessionId: "active-session-999",
-          controlState: "running",
-        })
-      })
-
-      // Session ID should be re-persisted
-      expect(localStorage.getItem("ralph-workspace-session:herbcaudill/ralph")).toBe(
-        "active-session-999",
-      )
-      // Control state should also be re-persisted
-      expect(localStorage.getItem("ralph-workspace-state:herbcaudill/ralph")).toBe("running")
     })
 
     it("should set isStreaming true when restoring a running session", async () => {
       // Simulate a previous running state
       localStorage.setItem("ralph-workspace-session:herbcaudill/ralph", "previous-session-id")
-      localStorage.setItem("ralph-workspace-state:herbcaudill/ralph", "running")
 
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
@@ -811,27 +642,6 @@ describe("useRalphLoop", () => {
         expect(result.current.sessionId).toBe("saved-session-id")
         expect(result.current.controlState).toBe("idle")
         expect(result.current.isStreaming).toBe(false)
-      })
-    })
-
-    it("should only start when start() is explicitly called", async () => {
-      const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
-
-      // Verify initially idle
-      expect(result.current.controlState).toBe("idle")
-
-      // Explicitly start
-      act(() => {
-        result.current.start()
-      })
-
-      const calls = mockWorkerInstance.port.getPostMessageCalls()
-      const startCalls = calls.filter((c: any) => c.type === "start")
-      expect(startCalls).toHaveLength(1)
-      expect(startCalls[0]).toEqual({
-        type: "start",
-        workspaceId: TEST_WORKSPACE_ID,
       })
     })
   })
@@ -1516,94 +1326,85 @@ describe("useRalphLoop", () => {
     })
   })
 
-  describe("stop after current (r-6mx58)", () => {
-    it("should initialize isStoppingAfterCurrent as false", async () => {
+  describe("pause and resume", () => {
+    it("should send pause message when pause is called", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
-      expect(result.current.isStoppingAfterCurrent).toBe(false)
-    })
-
-    it("should send stop_after_current message when stopAfterCurrent is called", async () => {
-      const { useRalphLoop } = await import("../useRalphLoop")
-      const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
+      await flushSubscription()
 
       act(() => {
-        result.current.stopAfterCurrent()
+        result.current.pause()
       })
 
       const calls = mockWorkerInstance.port.getPostMessageCalls()
       expect(calls).toContainEqual({
-        type: "stop_after_current",
+        type: "pause",
         workspaceId: TEST_WORKSPACE_ID,
       })
     })
 
-    it("should send cancel_stop_after_current message when cancelStopAfterCurrent is called", async () => {
+    it("should send resume message when resume is called", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
+      await flushSubscription()
+
       act(() => {
-        result.current.cancelStopAfterCurrent()
+        result.current.resume()
       })
 
       const calls = mockWorkerInstance.port.getPostMessageCalls()
       expect(calls).toContainEqual({
-        type: "cancel_stop_after_current",
+        type: "resume",
         workspaceId: TEST_WORKSPACE_ID,
       })
     })
+  })
 
-    it("should update isStoppingAfterCurrent when receiving stop_after_current_change event", async () => {
+  describe("send message", () => {
+    it("should send message to worker and add optimistic update", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
-      expect(result.current.isStoppingAfterCurrent).toBe(false)
+      await flushSubscription()
 
-      // Simulate receiving stop_after_current_change with isStoppingAfterCurrent: true
       act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "stop_after_current_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          isStoppingAfterCurrent: true,
-        })
+        result.current.sendMessage("Hello Claude")
       })
 
+      // Check message was sent to worker
+      const calls = mockWorkerInstance.port.getPostMessageCalls()
+      expect(calls).toContainEqual({
+        type: "message",
+        workspaceId: TEST_WORKSPACE_ID,
+        text: "Hello Claude",
+      })
+
+      // Check optimistic update was added
       await waitFor(() => {
-        expect(result.current.isStoppingAfterCurrent).toBe(true)
-      })
-
-      // Simulate receiving stop_after_current_change with isStoppingAfterCurrent: false
-      act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "stop_after_current_change",
-          workspaceId: TEST_WORKSPACE_ID,
-          isStoppingAfterCurrent: false,
-        })
-      })
-
-      await waitFor(() => {
-        expect(result.current.isStoppingAfterCurrent).toBe(false)
+        expect(
+          result.current.events.some(
+            e => e.type === "user_message" && (e as any).message === "Hello Claude",
+          ),
+        ).toBe(true)
       })
     })
 
-    it("should ignore stop_after_current_change from other workspaces", async () => {
+    it("should not send empty messages", async () => {
       const { useRalphLoop } = await import("../useRalphLoop")
       const { result } = renderHook(() => useRalphLoop(TEST_WORKSPACE_ID))
 
-      // Simulate receiving stop_after_current_change for a different workspace
+      await flushSubscription()
+
+      const callsBefore = mockWorkerInstance.port.getPostMessageCalls().length
+
       act(() => {
-        mockWorkerInstance.port.simulateMessage({
-          type: "stop_after_current_change",
-          workspaceId: "other/workspace",
-          isStoppingAfterCurrent: true,
-        })
+        result.current.sendMessage("   ")
       })
 
-      // Should remain false
-      await waitFor(() => {
-        expect(result.current.isStoppingAfterCurrent).toBe(false)
-      })
+      const callsAfter = mockWorkerInstance.port.getPostMessageCalls().length
+      expect(callsAfter).toBe(callsBefore) // No new messages sent
     })
   })
 })

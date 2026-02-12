@@ -1,51 +1,87 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import type { ChatEvent, ControlState, ConnectionStatus } from "@herbcaudill/agent-view"
+import type { ChatEvent, ConnectionStatus } from "@herbcaudill/agent-view"
 import type { WorkerMessage, WorkerEvent } from "../workers/ralphWorker"
-import {
-  saveWorkspaceSession,
-  loadWorkspaceSession,
-  clearWorkspaceSession,
-} from "../lib/workspaceSessionStorage"
 import { extractTaskLifecycleEvent } from "../lib/extractTaskLifecycleEvent"
 import { normalizeEventId } from "../lib/normalizeEventId"
 
 /**
- * Hook that communicates with the SharedWorker (ralphWorker.ts) for session event subscription.
- * Subscribes to a specific workspace and provides state for events, streaming status,
- * and connection status, along with actions to pause, resume, and send messages.
+ * Hook that subscribes to a session's events via the SharedWorker.
  *
- * IMPORTANT: This hook is now focused on session subscription only.
- * Loop management (start, stop, stop-after-current) is handled by useWorkerOrchestrator.
+ * This is a simplified hook that ONLY handles event subscription and deduplication.
+ * It does NOT manage:
+ * - Loop control (start/pause/resume) - use useWorkerOrchestrator for that
+ * - Session creation/continuation - the orchestrator handles that server-side
+ * - Marker detection for auto-continuation - removed since orchestrator handles loops
  *
- * Persists the most recent session ID per workspace in localStorage. On page reload,
- * restores the last session for the current workspace so past events can be viewed,
- * without auto-starting a new Ralph run.
+ * The SharedWorker maintains WebSocket connection pooling across browser tabs.
  */
-export function useRalphLoop(
+export function useSessionEvents(
   /** Workspace identifier in `owner/repo` format. */
   workspaceId?: string,
-): UseRalphLoopReturn {
+  /** Optional session ID to subscribe to. If not provided, subscribes to the workspace's current session. */
+  sessionId?: string | null,
+): UseSessionEventsReturn {
   const [events, setEvents] = useState<ChatEvent[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [controlState, setControlState] = useState<ControlState>("idle")
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected")
-  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
 
   const portRef = useRef<MessagePort | null>(null)
   const currentWorkspaceRef = useRef<string | undefined>(undefined)
+  const currentSessionIdRef = useRef<string | null | undefined>(undefined)
 
-  /** Send a message to the SharedWorker, automatically including the workspaceId. */
+  /** Send a message to the SharedWorker. */
   const postMessage = useCallback((message: WorkerMessage) => {
     if (portRef.current) {
       portRef.current.postMessage(message)
     }
   }, [])
 
+  /**
+   * Send a message to the agent within the current session.
+   * This allows the user to send follow-up messages to the agent.
+   */
+  const sendMessage = useCallback(
+    (message: string) => {
+      if (!workspaceId || !message.trim()) return
+      const trimmed = message.trim()
+
+      // Optimistic update: show the user message immediately in the event stream
+      const userEvent: ChatEvent = {
+        type: "user_message",
+        message: trimmed,
+        timestamp: Date.now(),
+      }
+      setEvents(prev => [...prev, userEvent])
+
+      postMessage({ type: "message", workspaceId, text: trimmed })
+    },
+    [workspaceId, postMessage],
+  )
+
+  /**
+   * Pause/interrupt the current session.
+   * Note: This is a per-session pause, distinct from orchestrator stop.
+   */
+  const pause = useCallback(() => {
+    if (!workspaceId) return
+    setIsStreaming(false)
+    postMessage({ type: "pause", workspaceId })
+  }, [workspaceId, postMessage])
+
+  /**
+   * Resume the current session from paused state.
+   */
+  const resume = useCallback(() => {
+    if (!workspaceId) return
+    postMessage({ type: "resume", workspaceId })
+  }, [workspaceId, postMessage])
+
   /** Handle messages received from the SharedWorker. */
   const handleWorkerMessage = useCallback((e: MessageEvent<WorkerEvent>) => {
     const data = e.data
 
-    // Skip global events or events for other workspaces
+    // Skip global events that don't have a workspaceId
     if (
       data.type === "stop_after_current_global_change" ||
       !("workspaceId" in data) ||
@@ -55,14 +91,6 @@ export function useRalphLoop(
     }
 
     switch (data.type) {
-      case "state_change":
-        setControlState(data.state)
-        // Clear session ID when transitioning to idle (session is complete)
-        if (data.state === "idle" && currentWorkspaceRef.current) {
-          clearWorkspaceSession(currentWorkspaceRef.current)
-        }
-        break
-
       case "event": {
         // Normalize uuid -> id for Claude CLI events
         const event = normalizeEventId(data.event as ChatEvent)
@@ -132,28 +160,13 @@ export function useRalphLoop(
       case "session_created":
         // New session — clear old events, start streaming
         setEvents([])
-        setSessionId(data.sessionId)
+        setActiveSessionId(data.sessionId)
         setIsStreaming(true)
-        // Persist the session ID so it can be restored on page reload
-        if (currentWorkspaceRef.current) {
-          saveWorkspaceSession(currentWorkspaceRef.current, data.sessionId)
-        }
         break
 
       case "session_restored":
-        // Session restored from localStorage
-        setSessionId(data.sessionId)
-        // Re-persist the session ID to localStorage
-        if (currentWorkspaceRef.current) {
-          saveWorkspaceSession(currentWorkspaceRef.current, data.sessionId)
-        }
-        // If the session was running or paused before reload, restore that state
-        if (data.controlState === "running" || data.controlState === "paused") {
-          setControlState(data.controlState)
-          if (data.controlState === "running") {
-            setIsStreaming(true) // Session is still active
-          }
-        }
+        // Session restored (e.g., after page reload)
+        setActiveSessionId(data.sessionId)
         break
 
       case "streaming_state":
@@ -161,12 +174,16 @@ export function useRalphLoop(
         setIsStreaming(data.isStreaming)
         break
 
-      // stop_after_current_change is now handled by orchestrator - ignored here
-      case "stop_after_current_change":
+      case "state_change":
+        // Clear events when transitioning to idle (session complete)
+        if (data.state === "idle") {
+          // Only clear if we're subscribed to the live session, not viewing historical
+          // The orchestrator may have moved to next task
+        }
         break
 
       case "error":
-        console.error("[useRalphLoop] Worker error:", data.error)
+        console.error("[useSessionEvents] Worker error:", data.error)
         break
     }
   }, [])
@@ -175,7 +192,7 @@ export function useRalphLoop(
   useEffect(() => {
     // SharedWorker is not supported in all environments (e.g., SSR, some browsers)
     if (typeof SharedWorker === "undefined") {
-      console.warn("[useRalphLoop] SharedWorker not supported in this environment")
+      console.warn("[useSessionEvents] SharedWorker not supported in this environment")
       return
     }
 
@@ -189,13 +206,13 @@ export function useRalphLoop(
 
       worker.port.onmessage = handleWorkerMessage
       worker.port.onmessageerror = e => {
-        console.error("[useRalphLoop] Worker message error:", e)
+        console.error("[useSessionEvents] Worker message error:", e)
       }
 
       // Start the port to receive messages
       worker.port.start()
     } catch (error) {
-      console.error("[useRalphLoop] Failed to create SharedWorker:", error)
+      console.error("[useSessionEvents] Failed to create SharedWorker:", error)
     }
 
     return () => {
@@ -213,14 +230,16 @@ export function useRalphLoop(
     }
   }, [handleWorkerMessage])
 
-  /** Subscribe/unsubscribe when workspace changes.
+  /**
+   * Subscribe/unsubscribe when workspace or sessionId changes.
    * Subscription deferred with setTimeout(0) so React StrictMode's synchronous
-   * mount→unmount→remount cycle doesn't create a SharedWorker WebSocket
-   * that is immediately torn down — which causes ECONNRESET on the proxy.
+   * mount->unmount->remount cycle doesn't create a SharedWorker WebSocket
+   * that is immediately torn down.
    */
   useEffect(() => {
     const previousWorkspaceId = currentWorkspaceRef.current
     currentWorkspaceRef.current = workspaceId
+    currentSessionIdRef.current = sessionId
 
     if (!portRef.current) return
 
@@ -234,9 +253,8 @@ export function useRalphLoop(
       // Reset state for the new workspace
       setEvents([])
       setIsStreaming(false)
-      setControlState("idle")
       setConnectionStatus("disconnected")
-      setSessionId(null)
+      setActiveSessionId(null)
     }
 
     // Subscribe to the new workspace
@@ -252,13 +270,12 @@ export function useRalphLoop(
 
       setConnectionStatus("connecting")
 
-      // Attempt to restore a previously saved session from localStorage
-      const savedSessionId = loadWorkspaceSession(workspaceId)
-      if (savedSessionId) {
+      // If a specific session ID was provided, restore that session
+      if (sessionId) {
         portRef.current.postMessage({
           type: "restore_session",
           workspaceId,
-          sessionId: savedSessionId,
+          sessionId,
         } satisfies WorkerMessage)
       }
     }, 0)
@@ -266,71 +283,41 @@ export function useRalphLoop(
     return () => {
       clearTimeout(subscribeTimer)
     }
-  }, [workspaceId])
+  }, [workspaceId, sessionId])
 
-  /** Pause/interrupt the Ralph session immediately. */
-  const pause = useCallback(() => {
-    if (!workspaceId) return
-    setIsStreaming(false)
-    postMessage({ type: "pause", workspaceId })
-  }, [workspaceId, postMessage])
-
-  /** Resume the Ralph session from paused state. */
-  const resume = useCallback(() => {
-    if (!workspaceId) return
-    postMessage({ type: "resume", workspaceId })
-  }, [workspaceId, postMessage])
-
-  /** Send a message to Claude within the current session. */
-  const sendMessage = useCallback(
-    (message: string) => {
-      if (!workspaceId || !message.trim()) return
-      const trimmed = message.trim()
-
-      // Optimistic update: show the user message immediately in the event stream
-      const userEvent: ChatEvent = {
-        type: "user_message",
-        message: trimmed,
-        timestamp: Date.now(),
-      }
-      setEvents(prev => [...prev, userEvent])
-
-      postMessage({ type: "message", workspaceId, text: trimmed })
-    },
-    [workspaceId, postMessage],
-  )
+  /** Clear events (e.g., when switching to a new session). */
+  const clearEvents = useCallback(() => {
+    setEvents([])
+  }, [])
 
   return {
     events,
     isStreaming,
-    controlState,
     connectionStatus,
-    sessionId,
+    sessionId: activeSessionId,
+    sendMessage,
     pause,
     resume,
-    sendMessage,
+    clearEvents,
   }
 }
 
-// Re-export types from agent-view for convenience
-export type { ControlState, ConnectionStatus }
-
-/** Return type of the useRalphLoop hook. */
-export interface UseRalphLoopReturn {
-  /** List of chat events from the Ralph session. */
+/** Return type of the useSessionEvents hook. */
+export interface UseSessionEventsReturn {
+  /** List of chat events from the session. */
   events: ChatEvent[]
   /** Whether the agent is currently streaming a response. */
   isStreaming: boolean
-  /** Current state of the session (idle, running, or paused). */
-  controlState: ControlState
-  /** Status of the connection to the SharedWorker. */
+  /** Status of the connection to the agent server. */
   connectionStatus: ConnectionStatus
-  /** The current session ID (active or restored from localStorage). */
+  /** The current session ID (active or restored). */
   sessionId: string | null
-  /** Pause/interrupt the Ralph session immediately. */
-  pause: () => void
-  /** Resume the Ralph session from paused state. */
-  resume: () => void
-  /** Send a message to Claude within the current session. */
+  /** Send a message to the agent within the current session. */
   sendMessage: (message: string) => void
+  /** Pause/interrupt the current session. */
+  pause: () => void
+  /** Resume the current session from paused state. */
+  resume: () => void
+  /** Clear all events (e.g., when switching sessions). */
+  clearEvents: () => void
 }

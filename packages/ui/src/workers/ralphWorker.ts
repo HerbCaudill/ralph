@@ -1,9 +1,13 @@
 /**
- * SharedWorker for managing Ralph loop WebSocket connections per workspace.
+ * SharedWorker for managing WebSocket connections per workspace.
  *
- * Maintains a Map of workspace states — each workspace has its own
- * WebSocket connection, control state, and session ID. Browser tabs
- * subscribe to a workspace to receive scoped events.
+ * This worker provides WebSocket connection pooling across browser tabs.
+ * Each workspace has its own WebSocket connection, and browser tabs
+ * subscribe to workspaces to receive scoped events.
+ *
+ * IMPORTANT: This worker is for event subscription only.
+ * Loop management (start/stop, session creation, task continuation) is handled
+ * by the server-side orchestrator via useWorkerOrchestrator.
  */
 
 // SharedWorker global scope type declaration
@@ -19,7 +23,7 @@ interface SharedWorkerGlobalScope {
   location: WorkerLocation
 }
 
-/** Control state for the Ralph loop. Matches agent-view ControlState. */
+/** Control state for the session. Matches agent-view ControlState. */
 export type ControlState = "idle" | "running" | "paused"
 
 /** Per-workspace state managed by the worker. */
@@ -31,12 +35,6 @@ interface WorkspaceState {
   pingInterval: ReturnType<typeof setInterval> | null
   /** Ports subscribed to this workspace's events. */
   subscribedPorts: Set<MessagePort>
-  /** Set when `<end_task>...</end_task>` is detected; signals task completed, continue loop. */
-  sessionCompleted: boolean
-  /** Set when `<promise>COMPLETE</promise>` is detected; signals no more tasks, stop loop. */
-  promiseComplete: boolean
-  /** Set when user requests stop after current; prevents auto-start. */
-  stopAfterCurrentPending: boolean
 }
 
 /** Messages sent from browser tabs to the worker. */
@@ -79,9 +77,6 @@ export const allPorts: Set<MessagePort> = new Set()
 /** Per-workspace state keyed by workspace ID (owner/repo). */
 export const workspaces = new Map<string, WorkspaceState>()
 
-/** Global flag for stop-after-current across all workspaces. */
-export let isStoppingAfterCurrentGlobal = false
-
 /** Get or create state for a workspace. */
 export function getWorkspace(workspaceId: string): WorkspaceState {
   let state = workspaces.get(workspaceId)
@@ -93,9 +88,6 @@ export function getWorkspace(workspaceId: string): WorkspaceState {
       reconnectTimer: null,
       pingInterval: null,
       subscribedPorts: new Set(),
-      sessionCompleted: false,
-      promiseComplete: false,
-      stopAfterCurrentPending: false,
     }
     workspaces.set(workspaceId, state)
   }
@@ -116,78 +108,12 @@ function broadcastToWorkspace(workspaceId: string, event: WorkerEvent): void {
   })
 }
 
-/** Broadcast an event to ALL connected ports across all workspaces. */
-function broadcastToAllPorts(event: WorkerEvent): void {
-  // Create a set to avoid sending to the same port multiple times
-  // (a port may be subscribed to multiple workspaces)
-  const sentPorts = new Set<MessagePort>()
-
-  for (const state of workspaces.values()) {
-    state.subscribedPorts.forEach(port => {
-      if (!sentPorts.has(port)) {
-        try {
-          port.postMessage(event)
-          sentPorts.add(port)
-        } catch {
-          state.subscribedPorts.delete(port)
-          allPorts.delete(port)
-        }
-      }
-    })
-  }
-}
-
-/** Set global stop-after-current flag and broadcast to all ports. */
-function setGlobalStopAfterCurrent(value: boolean): void {
-  if (isStoppingAfterCurrentGlobal !== value) {
-    isStoppingAfterCurrentGlobal = value
-
-    // Also set/clear the per-workspace flags
-    for (const [workspaceId, state] of workspaces) {
-      if (state.stopAfterCurrentPending !== value) {
-        state.stopAfterCurrentPending = value
-        broadcastToWorkspace(workspaceId, {
-          type: "stop_after_current_change",
-          workspaceId,
-          isStoppingAfterCurrent: value,
-        })
-      }
-    }
-
-    broadcastToAllPorts({
-      type: "stop_after_current_global_change",
-      isStoppingAfterCurrentGlobal: value,
-    })
-  }
-}
-
-/** Check if all workspaces are idle and clear global stop flag if so. */
-function checkAndClearGlobalStopIfAllIdle(): void {
-  if (!isStoppingAfterCurrentGlobal) return
-
-  // Check if any workspace is still running or paused
-  for (const state of workspaces.values()) {
-    if (state.controlState === "running" || state.controlState === "paused") {
-      return // At least one workspace is still active
-    }
-  }
-
-  // All workspaces are idle — clear global stop flag
-  setGlobalStopAfterCurrent(false)
-}
-
 /** Update control state and broadcast the change. */
 function setControlState(workspaceId: string, newState: ControlState): void {
   const state = getWorkspace(workspaceId)
   if (state.controlState !== newState) {
     state.controlState = newState
     broadcastToWorkspace(workspaceId, { type: "state_change", workspaceId, state: newState })
-
-    // When transitioning to idle, check if all workspaces are now idle
-    // and clear the global stop flag if so
-    if (newState === "idle") {
-      checkAndClearGlobalStopIfAllIdle()
-    }
   }
 }
 
@@ -245,75 +171,6 @@ function connectWorkspace(workspaceId: string): void {
         const raw = e.data as string
         const message = JSON.parse(raw) as Record<string, unknown>
 
-        // Detect session markers in assistant text content blocks.
-        // Two markers indicate different behaviors:
-        // 1. <promise>COMPLETE</promise> — no more tasks available, STOP the loop
-        // 2. <end_task>...</end_task> — task completed, CONTINUE to next task
-        //
-        // Match markers at the START (common: marker then summary) or END of text.
-        // The "start of text" pattern requires the marker to be followed by newlines
-        // or end-of-string to avoid false positives when the agent mentions markers
-        // mid-sentence (e.g., discussing the protocol or reading source code).
-        if (message.type === "event") {
-          const event = message.event as Record<string, unknown> | undefined
-
-          /** Check for markers in the event content. Returns the marker type found. */
-          const checkTextForMarkers = (text: string): "promise_complete" | "end_task" | null => {
-            // Check for promise complete marker (no more tasks, stop loop)
-            if (
-              /^\s*<promise>COMPLETE<\/promise>\s*(\n|$)/i.test(text) ||
-              /<promise>COMPLETE<\/promise>\s*$/i.test(text)
-            ) {
-              return "promise_complete"
-            }
-            // Check for end_task marker (task completed, continue loop)
-            if (
-              /^\s*<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*(\n|$)/i.test(text) ||
-              /<end_task>[a-z]+-[a-z0-9]+(?:\.[a-z0-9]+)*<\/end_task>\s*$/i.test(text)
-            ) {
-              return "end_task"
-            }
-            return null
-          }
-
-          /** Set the appropriate flag based on marker type. */
-          const setMarkerFlag = (marker: "promise_complete" | "end_task" | null): void => {
-            if (marker === "promise_complete") {
-              state.promiseComplete = true
-            } else if (marker === "end_task") {
-              state.sessionCompleted = true
-            }
-          }
-
-          // Check "assistant" events (complete messages with content blocks)
-          if (event?.type === "assistant") {
-            // Content blocks may be at event.message.content (Anthropic API format)
-            // or event.content (normalized format)
-            const msg = event.message as Record<string, unknown> | undefined
-            const content = (msg?.content ?? event.content) as
-              | Array<Record<string, unknown>>
-              | undefined
-            if (content) {
-              for (const block of content) {
-                if (block.type === "text" && typeof block.text === "string") {
-                  const marker = checkTextForMarkers(block.text)
-                  if (marker) {
-                    setMarkerFlag(marker)
-                    break
-                  }
-                }
-              }
-            }
-          }
-
-          // Check "message" events (streaming text deltas)
-          // This is how markers actually arrive in practice - via streaming content
-          if (event?.type === "message" && typeof event.content === "string") {
-            const marker = checkTextForMarkers(event.content)
-            setMarkerFlag(marker)
-          }
-        }
-
         if (message.type === "pong") return
 
         // Server sends {"type": "connected"} as an acknowledgment — not a chat event
@@ -326,31 +183,6 @@ function connectWorkspace(workspaceId: string): void {
             workspaceId,
             sessionId: state.currentSessionId,
           })
-
-          // Fetch and send the Ralph prompt as the first user message
-          if (state.controlState === "running") {
-            fetch(`${self.location.protocol}//${self.location.host}/api/prompts/ralph`)
-              .then(res => res.json())
-              .then((data: { prompt: string }) => {
-                if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-                  state.ws.send(
-                    JSON.stringify({
-                      type: "message",
-                      sessionId: state.currentSessionId,
-                      message: data.prompt,
-                      isSystemPrompt: true,
-                    }),
-                  )
-                }
-              })
-              .catch(err => {
-                broadcastToWorkspace(workspaceId, {
-                  type: "error",
-                  workspaceId,
-                  error: `Failed to load Ralph prompt: ${err.message}`,
-                })
-              })
-          }
           return
         }
 
@@ -358,17 +190,12 @@ function connectWorkspace(workspaceId: string): void {
           const events = message.events as unknown[]
           const pendingSessionId = message.sessionId as string | undefined
 
-          // Drop stale pending_events from a previous session. This prevents a
-          // race where: (1) page loads and restores old session, (2) worker sends
-          // reconnect for old session, (3) user starts a NEW session, (4) server
-          // responds with pending_events for the OLD session. Without this check
-          // those old events would be appended to the new session's stream.
+          // Drop stale pending_events from a previous session
           if (pendingSessionId && pendingSessionId !== state.currentSessionId) {
             return
           }
 
-          // Broadcast pending_events (even if empty) - the UI needs to know
-          // event restoration is complete (e.g., for newly created sessions)
+          // Broadcast pending_events (even if empty)
           broadcastToWorkspace(workspaceId, {
             type: "pending_events",
             workspaceId,
@@ -388,45 +215,10 @@ function connectWorkspace(workspaceId: string): void {
           // Also broadcast as generic event for any listeners
           broadcastToWorkspace(workspaceId, { type: "event", workspaceId, event: message })
 
-          // When the agent finishes processing (status transitions away from "processing"):
-          //
-          // 1. If stopAfterCurrentPending is set, transition to idle regardless of
-          //    which marker was seen. This prevents the UI from being stuck on
-          //    "Stopping after task" when the session ends without the marker.
-          //
-          // 2. If promiseComplete (<promise>COMPLETE</promise> was seen), stop the loop
-          //    — no more tasks are available.
-          //
-          // 3. If sessionCompleted (<end_task>...</end_task> was seen), continue the loop
-          //    — start a new session for the next task.
-          //
-          // 4. FALLBACK (r-suj0a): If none of the above markers were detected, transition
-          //    to idle. This prevents the UI from hanging when the marker wasn't captured
-          //    (e.g., regex mismatch, format issues, or agent completed without a marker).
+          // When processing finishes, transition to idle
+          // The orchestrator handles loop continuation server-side
           if (status !== "processing" && state.controlState === "running") {
-            if (state.stopAfterCurrentPending) {
-              // User requested stop after current — transition to idle
-              state.sessionCompleted = false
-              state.promiseComplete = false
-              state.stopAfterCurrentPending = false
-              setControlState(workspaceId, "idle")
-              broadcastToWorkspace(workspaceId, {
-                type: "stop_after_current_change",
-                workspaceId,
-                isStoppingAfterCurrent: false,
-              })
-            } else if (state.promiseComplete) {
-              // No more tasks available — stop the loop
-              state.promiseComplete = false
-              setControlState(workspaceId, "idle")
-            } else if (state.sessionCompleted) {
-              // Task completed — continue to next task
-              state.sessionCompleted = false
-              createOrResumeSession(workspaceId)
-            } else {
-              // No marker detected — fallback to idle to avoid hanging (r-suj0a)
-              setControlState(workspaceId, "idle")
-            }
+            setControlState(workspaceId, "idle")
           }
           return
         }
@@ -457,8 +249,7 @@ function connectWorkspace(workspaceId: string): void {
     }
 
     ws.onclose = () => {
-      // Only clean up if this is still the current WebSocket — a replacement
-      // WS may have been created already (e.g. by restore_session or start)
+      // Only clean up if this is still the current WebSocket
       if (state.ws === ws) {
         broadcastToWorkspace(workspaceId, { type: "disconnected", workspaceId })
         state.ws = null
@@ -509,32 +300,6 @@ function disconnectWorkspace(workspaceId: string): void {
   if (state.ws) {
     state.ws.close()
     state.ws = null
-  }
-}
-
-/** Create a new session or resume an existing one for a workspace. */
-function createOrResumeSession(workspaceId: string, sessionId?: string): void {
-  const state = getWorkspace(workspaceId)
-  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-    broadcastToWorkspace(workspaceId, {
-      type: "error",
-      workspaceId,
-      error: "WebSocket not connected",
-    })
-    return
-  }
-
-  if (sessionId) {
-    state.currentSessionId = sessionId
-    state.ws.send(JSON.stringify({ type: "reconnect", sessionId }))
-  } else {
-    state.ws.send(
-      JSON.stringify({
-        type: "create_session",
-        app: "ralph",
-        workspaceId,
-      }),
-    )
   }
 }
 
@@ -590,23 +355,6 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
         } satisfies WorkerEvent)
       }
 
-      // Send current stop_after_current state (if set)
-      if (state.stopAfterCurrentPending) {
-        port.postMessage({
-          type: "stop_after_current_change",
-          workspaceId: message.workspaceId,
-          isStoppingAfterCurrent: true,
-        } satisfies WorkerEvent)
-      }
-
-      // Send global stop_after_current state (if set)
-      if (isStoppingAfterCurrentGlobal) {
-        port.postMessage({
-          type: "stop_after_current_global_change",
-          isStoppingAfterCurrentGlobal: true,
-        } satisfies WorkerEvent)
-      }
-
       // Connect if not already connected
       if (state.ws?.readyState === WebSocket.OPEN) {
         port.postMessage({
@@ -634,9 +382,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
           // Port may already be closed
         }
 
-        // Disconnect if no subscribers remain — a worker with zero subscribers
-        // is unreachable, so keeping connections alive creates ghost sessions
-        // (especially after Vite HMR, which creates a new SharedWorker instance)
+        // Disconnect if no subscribers remain
         if (state.subscribedPorts.size === 0) {
           disconnectWorkspace(message.workspaceId)
           state.controlState = "idle"
@@ -646,23 +392,15 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       break
     }
 
+    // Note: 'start' is kept for backwards compatibility but the orchestrator
+    // now handles session creation. This may be removed in a future cleanup.
     case "start": {
       const state = getWorkspace(message.workspaceId)
       if (state.controlState === "idle") {
-        state.sessionCompleted = false
-        state.promiseComplete = false
-        state.stopAfterCurrentPending = false
         setControlState(message.workspaceId, "running")
         if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
           connectWorkspace(message.workspaceId)
         }
-        const checkConnection = setInterval(() => {
-          if (state.ws?.readyState === WebSocket.OPEN) {
-            clearInterval(checkConnection)
-            createOrResumeSession(message.workspaceId, message.sessionId)
-          }
-        }, 100)
-        setTimeout(() => clearInterval(checkConnection), 10000)
       }
       break
     }
@@ -670,8 +408,6 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
     case "pause": {
       // Pause immediately interrupts the agent and goes to paused state
       const state = getWorkspace(message.workspaceId)
-      state.sessionCompleted = false
-      state.promiseComplete = false
 
       // Send interrupt message to the agent-server if we have an active session
       if (state.currentSessionId && state.ws?.readyState === WebSocket.OPEN) {
@@ -684,8 +420,6 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       }
 
       setControlState(message.workspaceId, "paused")
-      // Note: We don't clear currentSessionId or disconnect - this allows
-      // viewing past events and sending new messages to continue the session
       break
     }
 
@@ -723,45 +457,13 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       break
     }
 
-    case "stop_after_current": {
-      // Set flag to stop after the current session completes
-      const state = getWorkspace(message.workspaceId)
-      if (!state.stopAfterCurrentPending) {
-        state.stopAfterCurrentPending = true
-        broadcastToWorkspace(message.workspaceId, {
-          type: "stop_after_current_change",
-          workspaceId: message.workspaceId,
-          isStoppingAfterCurrent: true,
-        })
-      }
+    // These are kept for backwards compatibility but are now handled by the orchestrator
+    case "stop_after_current":
+    case "cancel_stop_after_current":
+    case "stop_after_current_global":
+    case "cancel_stop_after_current_global":
+      // No-op: orchestrator handles stop-after-current logic
       break
-    }
-
-    case "cancel_stop_after_current": {
-      // Clear the stop after current flag
-      const state = getWorkspace(message.workspaceId)
-      if (state.stopAfterCurrentPending) {
-        state.stopAfterCurrentPending = false
-        broadcastToWorkspace(message.workspaceId, {
-          type: "stop_after_current_change",
-          workspaceId: message.workspaceId,
-          isStoppingAfterCurrent: false,
-        })
-      }
-      break
-    }
-
-    case "stop_after_current_global": {
-      // Set stop after current for ALL workspaces
-      setGlobalStopAfterCurrent(true)
-      break
-    }
-
-    case "cancel_stop_after_current_global": {
-      // Clear stop after current for ALL workspaces
-      setGlobalStopAfterCurrent(false)
-      break
-    }
 
     case "message": {
       const state = getWorkspace(message.workspaceId)
@@ -775,7 +477,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
         broadcastToWorkspace(message.workspaceId, {
           type: "error",
           workspaceId: message.workspaceId,
-          error: "Ralph is not running",
+          error: "No active session",
         })
       }
       break
@@ -804,8 +506,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
       if (state.controlState === "idle" && !state.currentSessionId) {
         state.currentSessionId = message.sessionId
 
-        // If the session was running before reload, restore that state.
-        // Use setControlState to broadcast the change so the UI updates.
+        // If the session was running before reload, restore that state
         if (message.controlState === "running") {
           setControlState(message.workspaceId, message.controlState)
         }
@@ -824,11 +525,7 @@ export function handlePortMessage(message: WorkerMessage, port: MessagePort): vo
           return false
         }
 
-        // Try immediately if already connected, otherwise poll until the
-        // WebSocket (started by subscribe_workspace) opens. Do NOT call
-        // connectWorkspace here — subscribe_workspace already initiated the
-        // connection and creating a second one causes a reconnection loop
-        // (the old WS's onclose clobbers state.ws).
+        // Try immediately if already connected, otherwise poll until connected
         if (!sendReconnect()) {
           const checkAndReconnect = setInterval(() => {
             if (sendReconnect()) {
