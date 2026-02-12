@@ -1,7 +1,19 @@
-// NOTE: Event types and guards have moved to @herbcaudill/agent-view and
-// @herbcaudill/agent-server. The events/ module is intentionally empty.
-
-// NOTE: Worker names have moved to @herbcaudill/ralph-ui (server/lib/workerNames.ts).
+// Ralph-specific event types, guards, and parsers
+export {
+  isRalphTaskStartedEvent,
+  isRalphTaskCompletedEvent,
+  parseTaskLifecycleEvent,
+  parsePromiseCompleteEvent,
+} from "./events/index"
+export type {
+  BaseChatEvent,
+  RalphTaskStartedChatEvent,
+  RalphTaskCompletedChatEvent,
+  RalphSessionStartChatEvent,
+  RalphSessionEndChatEvent,
+  TaskLifecycleChatEvent,
+  PromiseCompleteChatEvent,
+} from "./events/index"
 
 // NOTE: persistence/SessionPersister and persistence/getDefaultStorageDir are
 // server-only exports available at @herbcaudill/ralph-shared/server

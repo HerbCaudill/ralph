@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest"
 import { renderHook } from "@testing-library/react"
 import { useCurrentTask } from "../useCurrentTask"
-import type { ChatEvent, TaskLifecycleChatEvent } from "@herbcaudill/agent-view"
+import type { ChatEvent } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent } from "@herbcaudill/ralph-shared"
 
 describe("useCurrentTask", () => {
   it("returns null taskId and taskTitle when no events", () => {

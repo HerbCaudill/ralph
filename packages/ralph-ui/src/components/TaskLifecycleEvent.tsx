@@ -1,6 +1,6 @@
 import { cn, useAgentViewContext } from "@herbcaudill/agent-view"
 import { TextWithLinks } from "@herbcaudill/components"
-import type { TaskLifecycleChatEvent } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent } from "@herbcaudill/ralph-shared"
 import { IconPlayerPlay, IconCheck } from "@tabler/icons-react"
 
 /** Renders a task lifecycle event (starting or completing a task) with special styling. */

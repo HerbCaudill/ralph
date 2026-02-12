@@ -1,5 +1,5 @@
 import { cn } from "@herbcaudill/agent-view"
-import type { PromiseCompleteChatEvent } from "@herbcaudill/agent-view"
+import type { PromiseCompleteChatEvent } from "@herbcaudill/ralph-shared"
 import { IconCircleCheck } from "@tabler/icons-react"
 
 /** Renders a promise complete event with special styling, similar to task lifecycle events. */

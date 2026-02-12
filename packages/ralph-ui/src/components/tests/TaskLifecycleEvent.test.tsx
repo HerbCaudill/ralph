@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { TaskLifecycleEvent } from "../TaskLifecycleEvent"
-import type { TaskLifecycleChatEvent } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent } from "@herbcaudill/ralph-shared"
 
 describe("TaskLifecycleEvent", () => {
   describe("starting state", () => {

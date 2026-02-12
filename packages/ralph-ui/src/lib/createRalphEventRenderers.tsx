@@ -1,7 +1,7 @@
 import type { ChatEvent, CustomEventRenderer } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent, PromiseCompleteChatEvent } from "@herbcaudill/ralph-shared"
 import { TaskLifecycleEvent } from "@/components/TaskLifecycleEvent"
 import { PromiseCompleteEvent } from "@/components/PromiseCompleteEvent"
-import type { TaskLifecycleChatEvent, PromiseCompleteChatEvent } from "@herbcaudill/agent-view"
 
 /**
  * Creates custom event renderers for Ralph-specific events like task_lifecycle and promise_complete.

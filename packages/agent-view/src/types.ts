@@ -1,4 +1,15 @@
 import type { ReactNode } from "react"
+import type { TaskLifecycleChatEvent as _TaskLifecycleChatEvent } from "@herbcaudill/ralph-shared"
+
+// Re-export Ralph-specific types from ralph-shared (canonical home)
+export type {
+  RalphTaskStartedChatEvent,
+  RalphTaskCompletedChatEvent,
+  RalphSessionStartChatEvent,
+  RalphSessionEndChatEvent,
+  TaskLifecycleChatEvent,
+  PromiseCompleteChatEvent,
+} from "@herbcaudill/ralph-shared"
 
 /** Base chat event interface. */
 export interface ChatEvent {
@@ -106,32 +117,6 @@ export interface ToolUseChatEvent extends ChatEvent {
   error?: string
 }
 
-/** Emitted when Ralph starts working on a task. */
-export interface RalphTaskStartedChatEvent extends ChatEvent {
-  type: "ralph_task_started"
-  taskId?: string
-  sessionId?: string
-}
-
-/** Emitted when Ralph finishes working on a task. */
-export interface RalphTaskCompletedChatEvent extends ChatEvent {
-  type: "ralph_task_completed"
-  taskId?: string
-  sessionId?: string
-}
-
-/** Emitted at the start of a Ralph session. */
-export interface RalphSessionStartChatEvent extends ChatEvent {
-  type: "ralph_session_start"
-  sessionId?: string
-}
-
-/** Emitted at the end of a Ralph session. */
-export interface RalphSessionEndChatEvent extends ChatEvent {
-  type: "ralph_session_end"
-  sessionId?: string
-}
-
 /** A system event (e.g., init). */
 export interface SystemChatEvent extends ChatEvent {
   type: "system"
@@ -144,18 +129,6 @@ export interface AssistantTextChatEvent extends ChatEvent {
   content: string
 }
 
-/** A task lifecycle event. */
-export interface TaskLifecycleChatEvent extends ChatEvent {
-  type: "task_lifecycle"
-  action: "starting" | "completed"
-  taskId: string
-}
-
-/** A promise complete event, emitted when a session signals completion. */
-export interface PromiseCompleteChatEvent extends ChatEvent {
-  type: "promise_complete"
-}
-
 /** @deprecated Use `AssistantTextChatEvent` instead. */
 export type AssistantTextEvent = AssistantTextChatEvent
 
@@ -163,7 +136,7 @@ export type AssistantTextEvent = AssistantTextChatEvent
 export type UserMessageEvent = UserMessageChatEvent
 
 /** @deprecated Use `TaskLifecycleChatEvent` instead. */
-export type TaskLifecycleEventData = TaskLifecycleChatEvent
+export type TaskLifecycleEventData = _TaskLifecycleChatEvent
 
 /** @deprecated Use `ErrorChatEvent` instead. */
 export type ErrorEventData = ErrorChatEvent

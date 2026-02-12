@@ -1,5 +1,6 @@
 import { useMemo } from "react"
-import type { ChatEvent, TaskLifecycleChatEvent } from "@herbcaudill/agent-view"
+import type { ChatEvent } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent } from "@herbcaudill/ralph-shared"
 
 /**
  * Extract current task ID and title from Ralph events by tracking task lifecycle events.

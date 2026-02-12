@@ -1,5 +1,2 @@
-import type { ChatEvent, RalphTaskCompletedChatEvent } from "../types"
-
-export function isRalphTaskCompletedEvent(event: ChatEvent): event is RalphTaskCompletedChatEvent {
-  return event.type === "ralph_task_completed"
-}
+/** Re-export from ralph-shared (canonical home). */
+export { isRalphTaskCompletedEvent } from "@herbcaudill/ralph-shared"

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { createRalphEventRenderers } from "../createRalphEventRenderers"
-import type { TaskLifecycleChatEvent, PromiseCompleteChatEvent } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent, PromiseCompleteChatEvent } from "@herbcaudill/ralph-shared"
 
 describe("createRalphEventRenderers", () => {
   it("returns an object with task_lifecycle and promise_complete renderers", () => {

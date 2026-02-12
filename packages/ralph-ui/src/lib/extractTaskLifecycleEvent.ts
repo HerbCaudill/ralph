@@ -1,5 +1,6 @@
-import type { ChatEvent, TaskLifecycleChatEvent, AssistantChatEvent } from "@herbcaudill/agent-view"
-import { parseTaskLifecycleEvent } from "@herbcaudill/agent-view"
+import type { ChatEvent, AssistantChatEvent } from "@herbcaudill/agent-view"
+import type { TaskLifecycleChatEvent } from "@herbcaudill/ralph-shared"
+import { parseTaskLifecycleEvent } from "@herbcaudill/ralph-shared"
 
 /**
  * Extract a task lifecycle event from an assistant event if it contains task markers.

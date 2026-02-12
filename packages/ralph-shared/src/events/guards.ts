@@ -1,8 +1,7 @@
 /**
- * Type guards for agent events.
+ * Guard functions are exported individually from their own files:
+ * - isRalphTaskStartedEvent.ts
+ * - isRalphTaskCompletedEvent.ts
  *
- * Guard functions have moved to @herbcaudill/agent-server/agentTypes alongside
- * the backward-compatible Agent* type aliases they narrow.
- *
- * This module is intentionally empty after removing the re-exports.
+ * This file is kept for backward compatibility but re-exports are in index.ts.
  */

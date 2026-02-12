@@ -1,9 +1,22 @@
 /**
- * Event-related exports from ralph-shared.
- *
- * Core event types and guards have moved to their canonical homes:
- * - Types: @herbcaudill/agent-view (canonical) and @herbcaudill/agent-server (backward-compat aliases)
- * - Guards: @herbcaudill/agent-server/agentTypes
- *
- * This module is intentionally empty.
+ * Ralph-specific event types, guards, and parsers.
  */
+
+// Types
+export type {
+  BaseChatEvent,
+  RalphTaskStartedChatEvent,
+  RalphTaskCompletedChatEvent,
+  RalphSessionStartChatEvent,
+  RalphSessionEndChatEvent,
+  TaskLifecycleChatEvent,
+  PromiseCompleteChatEvent,
+} from "./types"
+
+// Guards
+export { isRalphTaskStartedEvent } from "./isRalphTaskStartedEvent"
+export { isRalphTaskCompletedEvent } from "./isRalphTaskCompletedEvent"
+
+// Parsers
+export { parseTaskLifecycleEvent } from "./parseTaskLifecycleEvent"
+export { parsePromiseCompleteEvent } from "./parsePromiseCompleteEvent"

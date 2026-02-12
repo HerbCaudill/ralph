@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { PromiseCompleteEvent } from "../PromiseCompleteEvent"
-import type { PromiseCompleteChatEvent } from "@herbcaudill/agent-view"
+import type { PromiseCompleteChatEvent } from "@herbcaudill/ralph-shared"
 
 describe("PromiseCompleteEvent", () => {
   const event: PromiseCompleteChatEvent = {
