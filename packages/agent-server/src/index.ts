@@ -110,8 +110,6 @@ export { assemblePrompt } from "./lib/loadPrompt.js"
 export type { AssemblePromptOptions } from "./lib/loadPrompt.js"
 export { registerPromptRoutes } from "./routes/promptRoutes.js"
 export type { PromptRouteContext } from "./routes/promptRoutes.js"
-export { getSessionSummary } from "./lib/getSessionSummary.js"
-export type { SessionSummary } from "./lib/getSessionSummary.js"
 export { parseTaskLifecycleEvent } from "./lib/parseTaskLifecycleEvent.js"
 export type { TaskLifecycleEventData } from "./lib/parseTaskLifecycleEvent.js"
 

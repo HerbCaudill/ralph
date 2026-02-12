@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express"
 import type { ChatSessionManager, SessionInfo } from "./ChatSessionManager.js"
 import { getAvailableAdapters } from "./AdapterRegistry.js"
 import { registerPromptRoutes } from "./routes/promptRoutes.js"
-import { getSessionSummary } from "./lib/getSessionSummary.js"
+import type { SessionPersister } from "@herbcaudill/ralph-shared/server"
 
 /** Context for route handlers. */
 export interface RouteContext {
@@ -14,6 +14,30 @@ export interface RouteContext {
 function param(req: Request, name: string): string {
   const value = req.params[name]
   return Array.isArray(value) ? value[0] : value
+}
+
+/**
+ * Extract the first non-empty user message from a list of persisted events.
+ * Returns undefined if no user message is found.
+ */
+async function extractFirstUserMessage(
+  /** The session ID to read events from. */
+  sessionId: string,
+  /** The session persister to read events from. */
+  persister: SessionPersister,
+  /** Optional app namespace for the session. */
+  app?: string,
+  /** Optional workspace identifier for the session. */
+  workspace?: string,
+): Promise<string | undefined> {
+  const events = await persister.readEvents(sessionId, app, workspace)
+  for (const event of events) {
+    if (event.type === "user_message" && typeof event.message === "string") {
+      const trimmed = event.message.trim()
+      if (trimmed.length > 0) return trimmed
+    }
+  }
+  return undefined
 }
 
 /** Register all HTTP routes on an Express app. */
@@ -127,19 +151,13 @@ export function registerRoutes(
       const persister = ctx.getSessionManager().getPersister()
       const sessionsWithSummary = await Promise.all(
         sessions.map(async session => {
-          const summary = await getSessionSummary(
+          const firstUserMessage = await extractFirstUserMessage(
             session.sessionId,
             persister,
             session.app,
             session.workspace,
           )
-          return summary ?
-              {
-                ...session,
-                ...(summary.taskId ? { taskId: summary.taskId } : {}),
-                ...(summary.firstUserMessage ? { firstUserMessage: summary.firstUserMessage } : {}),
-              }
-            : session
+          return firstUserMessage ? { ...session, firstUserMessage } : session
         }),
       )
       res.json({ sessions: sessionsWithSummary })

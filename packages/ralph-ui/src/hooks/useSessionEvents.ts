@@ -3,6 +3,7 @@ import type { ChatEvent, ConnectionStatus } from "@herbcaudill/agent-view"
 import type { WorkerMessage, WorkerEvent } from "../workers/ralphWorker"
 import { extractTaskLifecycleEvent } from "../lib/extractTaskLifecycleEvent"
 import { normalizeEventId } from "../lib/normalizeEventId"
+import { setSessionTaskId } from "../lib/sessionTaskIdCache"
 
 /**
  * Hook that subscribes to a session's events via the SharedWorker.
@@ -29,6 +30,7 @@ export function useSessionEvents(
   const portRef = useRef<MessagePort | null>(null)
   const currentWorkspaceRef = useRef<string | undefined>(undefined)
   const currentSessionIdRef = useRef<string | null | undefined>(undefined)
+  const activeSessionIdRef = useRef<string | null>(null)
 
   /** Send a message to the SharedWorker. */
   const postMessage = useCallback((message: WorkerMessage) => {
@@ -114,6 +116,10 @@ export function useSessionEvents(
           // Check for task lifecycle markers in assistant events
           const lifecycleEvent = extractTaskLifecycleEvent(event)
           if (lifecycleEvent) {
+            // Cache the task ID for the active session
+            if (lifecycleEvent.action === "starting" && activeSessionIdRef.current) {
+              setSessionTaskId(activeSessionIdRef.current, lifecycleEvent.taskId)
+            }
             // Emit both the original event and the derived task_lifecycle event
             return [...prev, event, lifecycleEvent]
           }
@@ -140,6 +146,10 @@ export function useSessionEvents(
 
             const lifecycleEvent = extractTaskLifecycleEvent(event)
             if (lifecycleEvent) {
+              // Cache the task ID for the active session
+              if (lifecycleEvent.action === "starting" && activeSessionIdRef.current) {
+                setSessionTaskId(activeSessionIdRef.current, lifecycleEvent.taskId)
+              }
               newEvents.push(lifecycleEvent)
             }
           }
@@ -160,12 +170,14 @@ export function useSessionEvents(
       case "session_created":
         // New session — clear old events, start streaming
         setEvents([])
+        activeSessionIdRef.current = data.sessionId
         setActiveSessionId(data.sessionId)
         setIsStreaming(true)
         break
 
       case "session_restored":
         // Session restored (e.g., after page reload)
+        activeSessionIdRef.current = data.sessionId
         setActiveSessionId(data.sessionId)
         break
 

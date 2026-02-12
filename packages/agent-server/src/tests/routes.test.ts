@@ -162,7 +162,7 @@ describe("routes", () => {
   })
 
   describe("GET /api/sessions?include=summary", () => {
-    it("returns sessions with taskId when include=summary is specified", async () => {
+    it("returns sessions with firstUserMessage when include=summary is specified", async () => {
       const ctx = createMockContext({
         persister: {
           readEvents: vi.fn().mockResolvedValue([
@@ -188,11 +188,12 @@ describe("routes", () => {
 
       expect(res.status).toBe(200)
       expect(res.body.sessions).toHaveLength(1)
-      expect(res.body.sessions[0].taskId).toBe("r-abc123")
+      // taskId extraction is now client-side only
+      expect(res.body.sessions[0].taskId).toBeUndefined()
       expect(res.body.sessions[0].firstUserMessage).toBe("Fix session picker labels")
     })
 
-    it("returns sessions without taskId when no task lifecycle events exist", async () => {
+    it("returns sessions with firstUserMessage when no task lifecycle events exist", async () => {
       const ctx = createMockContext({
         persister: {
           readEvents: vi.fn().mockResolvedValue([
@@ -218,14 +219,12 @@ describe("routes", () => {
       expect(res.body.sessions[0].firstUserMessage).toBe("How do I restore this session?")
     })
 
-    it("does not include taskId when include param is not specified", async () => {
+    it("does not include firstUserMessage when include param is not specified", async () => {
       const ctx = createMockContext({
         persister: {
           readEvents: vi
             .fn()
-            .mockResolvedValue([
-              { type: "message", content: "<start_task>r-abc123</start_task>", timestamp: 1000 },
-            ]),
+            .mockResolvedValue([{ type: "user_message", message: "Hello world", timestamp: 1000 }]),
         },
         sessionManager: {
           listSessions: vi
@@ -241,15 +240,13 @@ describe("routes", () => {
 
       expect(res.status).toBe(200)
       expect(res.body.sessions).toHaveLength(1)
-      expect(res.body.sessions[0].taskId).toBeUndefined()
+      expect(res.body.sessions[0].firstUserMessage).toBeUndefined()
     })
 
     it("combines app filter with include=summary", async () => {
       const readEvents = vi
         .fn()
-        .mockResolvedValue([
-          { type: "message", content: "<start_task>r-xyz</start_task>", timestamp: 1000 },
-        ])
+        .mockResolvedValue([{ type: "user_message", message: "Help with task", timestamp: 999 }])
       const ctx = createMockContext({
         persister: { readEvents },
         sessionManager: {
@@ -291,7 +288,9 @@ describe("routes", () => {
       expect(res.status).toBe(200)
       expect(res.body.sessions).toHaveLength(1)
       expect(res.body.sessions[0].sessionId).toBe("ralph-session")
-      expect(res.body.sessions[0].taskId).toBe("r-xyz")
+      expect(res.body.sessions[0].firstUserMessage).toBe("Help with task")
+      // taskId is no longer extracted server-side
+      expect(res.body.sessions[0].taskId).toBeUndefined()
     })
   })
 })

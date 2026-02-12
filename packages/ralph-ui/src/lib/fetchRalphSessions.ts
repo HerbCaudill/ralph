@@ -1,5 +1,7 @@
 import type { AgentType, SessionIndexEntry } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
+import { fetchSessionEvents } from "./fetchSessionEvents"
+import { extractTaskIdFromEvents, getSessionTaskId, setSessionTaskId } from "./sessionTaskIdCache"
 
 /** Extended session index entry with task details for Ralph sessions. */
 export interface RalphSessionIndexEntry extends SessionIndexEntry {
@@ -9,14 +11,13 @@ export interface RalphSessionIndexEntry extends SessionIndexEntry {
   taskTitle?: string
 }
 
-/** Response from GET /api/sessions?app=ralph&include=summary. */
+/** Response from GET /api/sessions?app=ralph. */
 interface SessionsResponse {
   sessions: Array<{
     sessionId: string
     adapter: string
     createdAt: number
     lastMessageAt?: number
-    taskId?: string
     /** Working directory this session was created in. */
     cwd?: string
     /** Session status: "idle" | "processing" | "error". */
@@ -45,7 +46,8 @@ export interface FetchRalphSessionsOptions {
 }
 
 /**
- * Fetch Ralph sessions from the agent server and resolve task titles from the local task cache.
+ * Fetch Ralph sessions from the agent server and resolve task IDs from client-side cache.
+ * For sessions without cached task IDs, fetches events and extracts the task ID.
  * Returns sessions sorted by lastMessageAt (most recent first).
  */
 export async function fetchRalphSessions(
@@ -58,7 +60,7 @@ export async function fetchRalphSessions(
   const taskTitleMap = new Map(tasks.map(t => [t.id, t.title]))
 
   try {
-    const response = await fetchFn(`${baseUrl}/api/sessions?app=ralph&include=summary`)
+    const response = await fetchFn(`${baseUrl}/api/sessions?app=ralph`)
     if (!response.ok) {
       return []
     }
@@ -72,22 +74,38 @@ export async function fetchRalphSessions(
         allSessions.filter(s => s.cwd && getWorkspaceId({ workspacePath: s.cwd }) === workspaceId)
       : allSessions
 
-    // Transform to RalphSessionIndexEntry and resolve task titles from local cache
+    // Resolve task IDs: check localStorage cache first, fetch events for uncached sessions
+    const uncachedSessions = sessions.filter(s => !getSessionTaskId(s.sessionId))
+
+    // Fetch events in parallel for uncached sessions and extract task IDs
+    await Promise.all(
+      uncachedSessions.map(async session => {
+        const events = await fetchSessionEvents(session.sessionId, { baseUrl, fetchFn })
+        const taskId = extractTaskIdFromEvents(events)
+        if (taskId) {
+          setSessionTaskId(session.sessionId, taskId)
+        }
+      }),
+    )
+
+    // Transform to RalphSessionIndexEntry with resolved task IDs and titles
     const entries = sessions.map((session): RalphSessionIndexEntry => {
+      const taskId = getSessionTaskId(session.sessionId)
+
       const entry: RalphSessionIndexEntry = {
         sessionId: session.sessionId,
         adapter: (session.adapter || "claude") as AgentType,
         firstMessageAt: session.createdAt,
         lastMessageAt: session.lastMessageAt ?? session.createdAt,
-        firstUserMessage: session.taskId ?? "",
-        taskId: session.taskId,
+        firstUserMessage: taskId ?? "",
+        taskId,
         // Mark session as active when status is "processing"
         isActive: session.status === "processing",
       }
 
       // Look up task title from local cache
-      if (session.taskId) {
-        const title = taskTitleMap.get(session.taskId)
+      if (taskId) {
+        const title = taskTitleMap.get(taskId)
         if (title) {
           entry.taskTitle = title
         }
