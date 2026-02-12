@@ -2,6 +2,7 @@
 export default {
   suites: [
     { name: "typecheck", command: "pnpm -r --parallel typecheck" },
+    { name: "beads-sdk", command: "pnpm --filter beads-sdk test" },
     { name: "shared", command: "pnpm --filter ralph-shared test" },
     { name: "cli", command: "pnpm --filter ralph test" },
     { name: "ui-vitest", command: "pnpm --filter ralph-ui test" },

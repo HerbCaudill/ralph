@@ -47,6 +47,7 @@ pnpm workspace with these packages:
 - **`packages/ralph-cli/`** (`@herbcaudill/ralph`) — CLI tool (published to npm)
 - **`packages/ralph-ui/`** (`@herbcaudill/ralph-ui`) — Web UI with React frontend and SharedWorker for loop orchestration
 - **`packages/ralph-shared/`** (`@herbcaudill/ralph-shared`) — Shared utilities, types, and prompt templates
+- **`packages/beads-sdk/`** (`@herbcaudill/beads-sdk`) — Typed TypeScript SDK for the beads issue tracker
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) — Task management UI/state/hooks. Two export paths: main (client) and `/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) — Express server for task management (port 4243)
 - **`packages/agent-view/`** (`@herbcaudill/agent-view`) — Agent chat UI components, event schema (Effect Schema), hotkeys, hooks

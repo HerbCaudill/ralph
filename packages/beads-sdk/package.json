@@ -1,7 +1,7 @@
 {
-  "name": "@herbcaudill/ralph-shared",
-  "version": "1.2.0",
-  "description": "Shared utilities and types for Ralph CLI and UI",
+  "name": "@herbcaudill/beads-sdk",
+  "version": "1.0.0",
+  "description": "Typed TypeScript SDK for the beads issue tracker",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,20 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./prompts": {
-      "types": "./dist/prompts/index.d.ts",
-      "import": "./dist/prompts/index.js"
-    },
-    "./server": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js"
-    },
-    "./templates/*": "./templates/*"
+    }
   },
   "files": [
-    "dist",
-    "templates"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
@@ -33,24 +23,20 @@
     "format": "prettier --write . --log-level silent"
   },
   "keywords": [
-    "ralph",
-    "shared",
-    "utilities"
+    "beads",
+    "issue-tracker",
+    "sdk"
   ],
   "author": "Herb Caudill",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/HerbCaudill/ralph.git"
+    "url": "git+https://github.com/HerbCaudill/beads-sdk.git"
   },
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@herbcaudill/agent-view": "workspace:*"
-  },
   "devDependencies": {
-    "@herbcaudill/beads-sdk": "workspace:*",
     "@types/node": "^24.10.9",
     "prettier": "^3.5.3",
     "typescript": "~5.9.3",

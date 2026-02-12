@@ -381,14 +381,29 @@ importers:
         specifier: ^4.0.17
         version: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
 
+  packages/beads-sdk:
+    devDependencies:
+      "@types/node":
+        specifier: ^24.10.9
+        version: 24.10.9
+      prettier:
+        specifier: ^3.5.3
+        version: 3.8.1
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.17
+        version: 4.0.18(@types/node@24.10.9)(@vitest/browser-playwright@4.0.18)(@vitest/ui@4.0.17)(jiti@2.6.1)(jsdom@28.0.0)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)
+
   packages/beads-server:
     dependencies:
       "@herbcaudill/agent-view-theme":
         specifier: workspace:*
         version: link:../agent-view-theme
       "@herbcaudill/beads-sdk":
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: workspace:*
+        version: link:../beads-sdk
       "@herbcaudill/beads-view":
         specifier: workspace:*
         version: link:../beads-view
@@ -634,8 +649,8 @@ importers:
         version: 19.2.3
     devDependencies:
       "@herbcaudill/beads-sdk":
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: workspace:*
+        version: link:../beads-sdk
       "@herbcaudill/ralph-shared":
         specifier: workspace:*
         version: link:../ralph-shared
@@ -677,8 +692,8 @@ importers:
         version: link:../agent-view
     devDependencies:
       "@herbcaudill/beads-sdk":
-        specifier: link:../../../beads-sdk
-        version: link:../../../beads-sdk
+        specifier: workspace:*
+        version: link:../beads-sdk
       "@types/node":
         specifier: ^24.10.9
         version: 24.10.9
