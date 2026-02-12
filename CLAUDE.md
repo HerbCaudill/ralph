@@ -112,7 +112,9 @@ Task-chat sessions are read-only for file editing: session creation passes an `a
 
 ### Concurrent workers
 
-`WorktreeManager`, `WorkerLoop`, and `WorkerOrchestrator` (all in `packages/agent-server/src/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from shared). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns Claude, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
+`WorktreeManager`, `WorkerLoop`, `WorkerOrchestrator`, and `WorkerOrchestratorManager` (all in `packages/agent-server/src/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from shared). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns an agent session, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
+
+`WorkerOrchestratorManager` integrates with `ChatSessionManager` to create agent sessions instead of spawning CLI processes directly. When a `sessionManager` option is provided, sessions are created via `ChatSessionManager.createSession()`, the Ralph prompt is loaded via `loadSessionPrompt`, and the task assignment is sent as the initial message. This enables event streaming through the existing WebSocket pipeline. The manager emits a `session_created` event with `{ workerName, sessionId, taskId }` when a new session starts.
 
 The UI layer uses `useWorkerOrchestrator` hook (in `packages/ui/src/hooks/`) to connect to the orchestrator via WebSocket, receiving real-time state updates for all workers. The `WorkerControlBar` component displays active workers with per-worker pause/resume/stop controls and a global stop-after-current button.
 

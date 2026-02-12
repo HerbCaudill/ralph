@@ -7,7 +7,8 @@ import {
   type WorkerInfo,
 } from "./WorkerOrchestrator.js"
 import { type ReadyTask, type RunAgentResult } from "./WorkerLoop.js"
-import { findClaudeExecutable } from "../findClaudeExecutable.js"
+import type { ChatSessionManager } from "../ChatSessionManager.js"
+import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
 
 /**
  * Task source callbacks for providing ready tasks to the orchestrator.
@@ -62,8 +63,16 @@ export interface WorkerOrchestratorManagerOptions {
   runTests?: boolean
 
   /**
+   * ChatSessionManager instance for creating agent sessions.
+   * When provided, sessions are created via the session manager instead of spawning CLI directly.
+   * This enables event streaming through the existing WebSocket pipeline.
+   */
+  sessionManager?: ChatSessionManager
+
+  /**
    * Custom function to run an agent session.
-   * If not provided, defaults to spawning the Claude CLI with --print flag.
+   * If not provided and sessionManager is set, sessions are created via ChatSessionManager.
+   * If neither is provided, throws an error.
    */
   runAgent?: (cwd: string, taskId: string, taskTitle: string) => Promise<RunAgentResult>
 }
@@ -75,20 +84,23 @@ export interface WorkerOrchestratorManagerOptions {
 export interface WorkerOrchestratorManagerEvents extends WorkerOrchestratorEvents {
   /** Emitted when task source fails */
   task_source_error: [{ error: Error }]
+
+  /** Emitted when a session is created for a worker */
+  session_created: [{ workerName: string; sessionId: string; taskId: string }]
 }
 
 /**
- * Manages a WorkerOrchestrator with integrated task source and Claude spawning.
+ * Manages a WorkerOrchestrator with integrated task source and session management.
  *
  * This class provides the glue between:
  * - WorkerOrchestrator (manages concurrent workers)
  * - Task source (beads or other task/issue tracking system)
- * - Claude CLI (the agent)
+ * - ChatSessionManager (creates agent sessions with event streaming)
  *
  * It handles:
  * - Fetching ready tasks via provided callbacks
  * - Claiming and closing tasks
- * - Spawning Claude CLI processes
+ * - Creating agent sessions via ChatSessionManager
  * - Running tests (optional)
  */
 export class WorkerOrchestratorManager extends EventEmitter {
@@ -97,6 +109,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
   private mainWorkspacePath: string
   private app: string
   private runTestsEnabled: boolean
+  private sessionManager?: ChatSessionManager
   private customRunAgent?: (
     cwd: string,
     taskId: string,
@@ -110,6 +123,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
     this.taskSource = options.taskSource
     this.app = options.app ?? "ralph"
     this.runTestsEnabled = options.runTests ?? false
+    this.sessionManager = options.sessionManager
     this.customRunAgent = options.runAgent
 
     // Create orchestrator with task source callbacks
@@ -231,30 +245,85 @@ export class WorkerOrchestratorManager extends EventEmitter {
       return this.customRunAgent(cwd, taskId, taskTitle)
     }
 
-    const claudeExecutable = findClaudeExecutable()
-    if (!claudeExecutable) {
-      throw new Error("Claude executable not found")
+    // Create session via ChatSessionManager
+    if (!this.sessionManager) {
+      throw new Error(
+        "No session manager configured. Provide either sessionManager or runAgent option.",
+      )
     }
 
-    // Spawn Claude with the Ralph app prompt
-    return new Promise((resolve, reject) => {
-      const proc = spawn(claudeExecutable, ["--print", "--dangerously-skip-permissions"], {
-        cwd,
-        stdio: ["pipe", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          // Pass the app name for prompt loading
-          CLAUDE_APP: this.app,
-        },
-      })
+    // Extract worker name from worktree path
+    // Path format: {basePath}/{workerName}/{taskId}
+    const workerName = this.extractWorkerNameFromPath(cwd)
 
-      proc.on("close", code => {
-        resolve({ exitCode: code ?? 0, sessionId: "" })
-      })
+    // Create the session
+    const { sessionId } = await this.sessionManager.createSession({
+      cwd,
+      app: this.app,
+    })
 
-      proc.on("error", error => {
-        reject(error)
-      })
+    // Emit session_created event so UI can refresh session list
+    this.emit("session_created", { workerName, sessionId, taskId })
+
+    // Load the Ralph prompt and send it with task assignment
+    const promptResult = loadSessionPrompt({
+      templatesDir: TEMPLATES_DIR,
+      cwd,
+    })
+    const prompt = `${promptResult.content}\n\nYour assigned task: ${taskTitle}`
+
+    // Send the prompt (this is the system prompt for the session)
+    await this.sessionManager.sendMessage(sessionId, prompt, {
+      isSystemPrompt: true,
+    })
+
+    // Wait for session to complete (status becomes idle or stopped)
+    await this.waitForSessionCompletion(sessionId)
+
+    return { exitCode: 0, sessionId }
+  }
+
+  /**
+   * Extract worker name from a worktree path.
+   * Path format: {basePath}/{workerName}/{taskId}
+   */
+  private extractWorkerNameFromPath(worktreePath: string): string {
+    // Split path and get second-to-last component
+    const parts = worktreePath.split("/").filter(Boolean)
+    if (parts.length >= 2) {
+      return parts[parts.length - 2]
+    }
+    return "unknown"
+  }
+
+  /**
+   * Wait for a session to complete (status becomes idle or stopped).
+   */
+  private waitForSessionCompletion(sessionId: string): Promise<void> {
+    return new Promise(resolve => {
+      const checkStatus = () => {
+        const info = this.sessionManager?.getSessionInfo(sessionId)
+        if (!info || info.status === "idle" || info.status === "error") {
+          this.sessionManager?.off("status", onStatus)
+          resolve()
+        }
+      }
+
+      const onStatus = (sid: string, status: string) => {
+        if (
+          sid === sessionId &&
+          (status === "idle" || status === "error" || status === "stopped")
+        ) {
+          this.sessionManager?.off("status", onStatus)
+          resolve()
+        }
+      }
+
+      // Listen for status changes
+      this.sessionManager?.on("status", onStatus)
+
+      // Also check current status in case it's already idle
+      checkStatus()
     })
   }
 

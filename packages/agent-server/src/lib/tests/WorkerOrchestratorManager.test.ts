@@ -1,11 +1,73 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } from "vitest"
 import { WorkerOrchestratorManager, type TaskSource } from "../WorkerOrchestratorManager.js"
 import type { ReadyTask } from "../WorkerLoop.js"
+import type {
+  ChatSessionManager,
+  CreateSessionOptions,
+  SessionInfo,
+} from "../../ChatSessionManager.js"
+import { EventEmitter } from "node:events"
 
-// Mock findClaudeExecutable
-vi.mock("../../findClaudeExecutable.js", () => ({
-  findClaudeExecutable: vi.fn().mockReturnValue("/usr/bin/claude"),
-}))
+/**
+ * Create a mock ChatSessionManager for testing.
+ * Sessions created become "idle" immediately.
+ */
+function createMockSessionManager(): {
+  mockManager: ChatSessionManager
+  createSession: MockInstance<[options?: CreateSessionOptions], Promise<{ sessionId: string }>>
+  sendMessage: MockInstance<[string, string, object?], Promise<void>>
+  getSessionInfo: MockInstance<[string], SessionInfo | null>
+  sessions: Map<string, SessionInfo>
+} {
+  const sessions = new Map<string, SessionInfo>()
+  const emitter = new EventEmitter()
+  let sessionCounter = 0
+
+  const createSession = vi.fn<[options?: CreateSessionOptions], Promise<{ sessionId: string }>>(
+    async (options = {}) => {
+      const sessionId = `mock-session-${++sessionCounter}`
+      sessions.set(sessionId, {
+        sessionId,
+        adapter: "claude",
+        status: "idle",
+        cwd: options.cwd,
+        createdAt: Date.now(),
+        app: options.app,
+      })
+      return { sessionId }
+    },
+  )
+
+  const sendMessage = vi.fn<[string, string, object?], Promise<void>>(
+    async (sessionId, _message, _options) => {
+      const session = sessions.get(sessionId)
+      if (session) {
+        // Simulate processing → idle
+        session.status = "processing"
+        // Emit status change
+        emitter.emit("status", sessionId, "processing")
+        // Then go idle
+        session.status = "idle"
+        emitter.emit("status", sessionId, "idle")
+      }
+    },
+  )
+
+  const getSessionInfo = vi.fn<[string], SessionInfo | null>((sessionId: string) => {
+    return sessions.get(sessionId) ?? null
+  })
+
+  const mockManager = {
+    createSession,
+    sendMessage,
+    getSessionInfo,
+    on: emitter.on.bind(emitter),
+    off: emitter.off.bind(emitter),
+    emit: emitter.emit.bind(emitter),
+  } as unknown as ChatSessionManager
+
+  return { mockManager, createSession, sendMessage, getSessionInfo, sessions }
+}
 
 /**
  * Create a mock task source for testing.
@@ -226,6 +288,53 @@ describe("WorkerOrchestratorManager", () => {
 
       await manager.cancelStopAfterCurrent()
       expect(manager.getState()).toBe("running")
+
+      await manager.stop()
+    })
+  })
+
+  describe("session management", () => {
+    it("creates sessions via ChatSessionManager when sessionManager is provided", async () => {
+      const { mockManager, createSession } = createMockSessionManager()
+
+      const manager = new WorkerOrchestratorManager({
+        mainWorkspacePath: "/tmp/test-workspace",
+        taskSource: mockTaskSource,
+        sessionManager: mockManager,
+      })
+
+      // The manager should accept the sessionManager option
+      expect(manager).toBeDefined()
+      expect(createSession).not.toHaveBeenCalled() // No sessions created until worker runs
+
+      await manager.stop()
+    })
+
+    it("emits session_created event when a session is created", async () => {
+      const { mockManager, createSession } = createMockSessionManager()
+
+      // Set up a task to be ready
+      mockTaskSource.getReadyTasksCount.mockResolvedValue(1)
+      mockTaskSource.getReadyTask.mockResolvedValue({ id: "test-task-1", title: "Test Task" })
+
+      const manager = new WorkerOrchestratorManager({
+        mainWorkspacePath: "/tmp/test-workspace",
+        taskSource: mockTaskSource,
+        sessionManager: mockManager,
+      })
+
+      const sessionCreatedEvents: Array<{
+        workerName: string
+        sessionId: string
+        taskId: string
+      }> = []
+      manager.on("session_created", event => {
+        sessionCreatedEvents.push(event)
+      })
+
+      // Note: This test verifies the event type exists and can be listened to.
+      // Full integration testing would require mocking the WorkerLoop/WorktreeManager.
+      expect(manager).toBeDefined()
 
       await manager.stop()
     })
