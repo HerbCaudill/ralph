@@ -68,6 +68,24 @@ vi.mock("../../hooks/useAccentColor", () => ({
   useAccentColor: vi.fn(),
 }))
 
+vi.mock("../../hooks/useWorkerOrchestrator", () => ({
+  useWorkerOrchestrator: () => ({
+    // Map mockControlState to orchestrator state format
+    state: mockControlState === "idle" ? "stopped" : "running",
+    workers: {},
+    maxWorkers: 3,
+    activeWorkerCount: 0,
+    isConnected: true,
+    start: vi.fn(),
+    stop: vi.fn(),
+    stopAfterCurrent: vi.fn(),
+    cancelStopAfterCurrent: vi.fn(),
+    pauseWorker: vi.fn(),
+    resumeWorker: vi.fn(),
+    stopWorker: vi.fn(),
+  }),
+}))
+
 vi.mock("../../hooks/useThemes", () => ({
   useThemes: () => ({
     themes: [],

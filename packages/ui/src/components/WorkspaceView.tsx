@@ -36,6 +36,7 @@ import {
   useDetectedModel,
   formatModelName,
   type ChatInputHandle,
+  type ControlState,
 } from "@herbcaudill/agent-view"
 import { getWorkspaceId } from "@herbcaudill/ralph-shared"
 import { useWorkerName } from "@/hooks/useWorkerName"
@@ -68,20 +69,15 @@ export function WorkspaceView() {
   }
 
   // Ralph loop state from SharedWorker
+  // Note: controlState/connectionStatus/stop handling now comes from orchestrator.
+  // useRalphLoop is still needed for session event subscription and per-session controls.
   const {
     events: liveEvents,
     isStreaming: liveIsStreaming,
-    controlState,
-    connectionStatus,
     sessionId,
-    isStoppingAfterCurrent,
-    isStoppingAfterCurrentGlobal,
-    start,
     pause,
     resume,
     sendMessage,
-    stopAfterCurrentGlobal,
-    cancelStopAfterCurrentGlobal,
   } = useRalphLoop(workspaceId)
 
   // Task state from beads-view (declared early so sessions can use it for title resolution)
@@ -158,15 +154,25 @@ export function WorkspaceView() {
   // Real-time task refresh via WebSocket
   useTaskMutations({ workspacePath: workspace?.path })
 
+  // Worker orchestrator for parallel execution control
+  const orchestrator = useWorkerOrchestrator(workspaceId)
+
+  // Derive the effective control state from the orchestrator for UI display.
+  // This maps orchestrator states to the ControlState type expected by UI components.
+  const effectiveControlState: ControlState =
+    orchestrator.state === "stopped" ? "idle"
+    : orchestrator.state === "running" ? "running"
+    : "running" // "stopping" shows as "running" with stopping indicator
+
   // Sync initial task count to beads-view store so TaskProgressBar renders
   useEffect(() => {
     const store = beadsViewStore.getState()
-    if (controlState !== "idle" && tasks.length > 0) {
+    if (effectiveControlState !== "idle" && tasks.length > 0) {
       store.setInitialTaskCount(tasks.length)
     } else {
       store.setInitialTaskCount(null)
     }
-  }, [controlState, tasks.length])
+  }, [effectiveControlState, tasks.length])
 
   // Active worker name from Ralph events
   const workerName = useWorkerName(events)
@@ -177,9 +183,6 @@ export function WorkspaceView() {
   const detectedModel = useDetectedModel(events)
   const modelName = formatModelName(detectedModel ?? adapterModel)
   const agentDisplayName = agentType.charAt(0).toUpperCase() + agentType.slice(1)
-
-  // Worker orchestrator for parallel execution control
-  const orchestrator = useWorkerOrchestrator(workspaceId)
 
   const { selectedTask, openDialogById, closeDialog } = useTaskDialog({
     onTaskUpdated: refresh,
@@ -304,12 +307,12 @@ export function WorkspaceView() {
     taskChatInputRef.current?.focus()
   }, [taskChatActions])
 
-  // Start Ralph hotkey handler
+  // Start Ralph hotkey handler - now uses orchestrator
   const handleStartRalph = useCallback(() => {
-    if (controlState === "idle" && connectionStatus === "connected") {
-      start()
+    if (orchestrator.state === "stopped" && orchestrator.isConnected) {
+      orchestrator.start()
     }
-  }, [controlState, connectionStatus, start])
+  }, [orchestrator])
 
   // Workspace navigation hotkey handlers
   const handlePreviousWorkspace = useCallback(() => {
@@ -369,11 +372,11 @@ export function WorkspaceView() {
     [sendMessage],
   )
 
-  // Handle new session
+  // Handle new session - stop and restart the orchestrator
   const handleNewSession = useCallback(() => {
-    pause()
-    setTimeout(start, 100)
-  }, [pause, start])
+    orchestrator.stop()
+    setTimeout(() => orchestrator.start(), 100)
+  }, [orchestrator])
 
   // Handle task chat message send
   const handleTaskChatSend = useCallback(
@@ -405,27 +408,19 @@ export function WorkspaceView() {
     void refresh()
   }, [refresh])
 
-  // Command palette handlers
+  // Command palette handlers - now uses orchestrator
   const handleAgentStart = useCallback(() => {
-    start()
-  }, [start])
+    orchestrator.start()
+  }, [orchestrator])
 
+  // Pause handler for command palette - stops orchestrator
   const handleAgentPause = useCallback(() => {
-    pause()
-  }, [])
+    orchestrator.stopAfterCurrent()
+  }, [orchestrator])
 
   const handleCycleTheme = useCallback(() => {
     console.log("Cycle theme")
   }, [])
-
-  // Stop after current session handlers (use global stop to stop ALL Ralph loops)
-  const handleStopAfterCurrent = useCallback(() => {
-    stopAfterCurrentGlobal()
-  }, [stopAfterCurrentGlobal])
-
-  const handleCancelStopAfterCurrent = useCallback(() => {
-    cancelStopAfterCurrentGlobal()
-  }, [cancelStopAfterCurrentGlobal])
 
   // Left sidebar: always show TaskChatPanel
   const sidebar = (
@@ -446,14 +441,14 @@ export function WorkspaceView() {
   )
 
   // Ralph loop panel (right side)
-  // Use global stopping state to show "Stopping..." for the global stop-after-current
-  const effectiveIsStoppingAfterCurrent = isStoppingAfterCurrent || isStoppingAfterCurrentGlobal
+  // Use orchestrator stopping state for the global stop-after-current indicator
+  const effectiveIsStoppingAfterCurrent = orchestrator.state === "stopping"
   const rightPanel = (
     <RalphRunner
       events={events}
       isStreaming={isStreaming}
-      controlState={controlState}
-      connectionStatus={connectionStatus}
+      controlState={effectiveControlState}
+      connectionStatus={orchestrator.isConnected ? "connected" : "disconnected"}
       isStoppingAfterCurrent={effectiveIsStoppingAfterCurrent}
       sessions={sessions}
       sessionId={viewedSessionId}
@@ -467,11 +462,11 @@ export function WorkspaceView() {
       }}
       onSendMessage={handleRalphSend}
       onSelectSession={handleSelectSession}
-      onStart={start}
+      onStart={orchestrator.start}
       onResume={resume}
       onPause={pause}
-      onStopAfterCurrent={handleStopAfterCurrent}
-      onCancelStopAfterCurrent={handleCancelStopAfterCurrent}
+      onStopAfterCurrent={orchestrator.stopAfterCurrent}
+      onCancelStopAfterCurrent={orchestrator.cancelStopAfterCurrent}
       onNewSession={handleNewSession}
     />
   )
@@ -515,7 +510,7 @@ export function WorkspaceView() {
           searchInputRef={searchInputRef}
           onTaskClick={handleTaskClick}
           onOpenTask={handleTaskClick}
-          isRunning={controlState === "running"}
+          isRunning={effectiveControlState === "running"}
         />
       </MainLayout>
       <HotkeysDialog open={showHotkeysDialog} onClose={() => setShowHotkeysDialog(false)} />
@@ -539,8 +534,8 @@ export function WorkspaceView() {
           previousWorkspace: handlePreviousWorkspace,
           nextWorkspace: handleNextWorkspace,
         }}
-        controlState={controlState}
-        isConnected={connectionStatus === "connected"}
+        controlState={effectiveControlState}
+        isConnected={orchestrator.isConnected}
       />
     </div>
   )
