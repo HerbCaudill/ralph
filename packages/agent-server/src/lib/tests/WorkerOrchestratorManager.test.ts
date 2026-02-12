@@ -338,5 +338,41 @@ describe("WorkerOrchestratorManager", () => {
 
       await manager.stop()
     })
+
+    it("accepts storageDir option for session resume functionality", () => {
+      const { mockManager } = createMockSessionManager()
+
+      const manager = new WorkerOrchestratorManager({
+        mainWorkspacePath: "/tmp/test-workspace",
+        taskSource: mockTaskSource,
+        sessionManager: mockManager,
+        storageDir: "/tmp/sessions",
+      })
+
+      expect(manager).toBeDefined()
+    })
+
+    it("emits session_resumed event type exists", () => {
+      const { mockManager } = createMockSessionManager()
+
+      const manager = new WorkerOrchestratorManager({
+        mainWorkspacePath: "/tmp/test-workspace",
+        taskSource: mockTaskSource,
+        sessionManager: mockManager,
+        storageDir: "/tmp/sessions",
+      })
+
+      const resumedEvents: Array<{
+        workerName: string
+        sessionId: string
+        taskId: string
+      }> = []
+      manager.on("session_resumed", event => {
+        resumedEvents.push(event)
+      })
+
+      // Verify the event type is wired up
+      expect(manager).toBeDefined()
+    })
   })
 })

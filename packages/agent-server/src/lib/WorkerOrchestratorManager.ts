@@ -9,6 +9,7 @@ import {
 import { type ReadyTask, type RunAgentResult } from "./WorkerLoop.js"
 import type { ChatSessionManager } from "../ChatSessionManager.js"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
+import { findIncompleteSession } from "./findIncompleteSession.js"
 
 /**
  * Task source callbacks for providing ready tasks to the orchestrator.
@@ -70,6 +71,13 @@ export interface WorkerOrchestratorManagerOptions {
   sessionManager?: ChatSessionManager
 
   /**
+   * Storage directory for session JSONL files.
+   * Required for session resume functionality.
+   * If not provided but sessionManager is set, resume functionality is disabled.
+   */
+  storageDir?: string
+
+  /**
    * Custom function to run an agent session.
    * If not provided and sessionManager is set, sessions are created via ChatSessionManager.
    * If neither is provided, throws an error.
@@ -87,6 +95,9 @@ export interface WorkerOrchestratorManagerEvents extends WorkerOrchestratorEvent
 
   /** Emitted when a session is created for a worker */
   session_created: [{ workerName: string; sessionId: string; taskId: string }]
+
+  /** Emitted when resuming an incomplete session */
+  session_resumed: [{ workerName: string; sessionId: string; taskId: string }]
 }
 
 /**
@@ -110,6 +121,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
   private app: string
   private runTestsEnabled: boolean
   private sessionManager?: ChatSessionManager
+  private storageDir?: string
   private customRunAgent?: (
     cwd: string,
     taskId: string,
@@ -124,6 +136,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
     this.app = options.app ?? "ralph"
     this.runTestsEnabled = options.runTests ?? false
     this.sessionManager = options.sessionManager
+    this.storageDir = options.storageDir
     this.customRunAgent = options.runAgent
 
     // Create orchestrator with task source callbacks
@@ -256,21 +269,68 @@ export class WorkerOrchestratorManager extends EventEmitter {
     // Path format: {basePath}/{workerName}/{taskId}
     const workerName = this.extractWorkerNameFromPath(cwd)
 
-    // Create the session
-    const { sessionId } = await this.sessionManager.createSession({
-      cwd,
-      app: this.app,
-    })
+    // Check for an incomplete session that can be resumed
+    let sessionId: string
+    let isResume = false
 
-    // Emit session_created event so UI can refresh session list
-    this.emit("session_created", { workerName, sessionId, taskId })
+    if (this.storageDir) {
+      const incompleteSessionId = findIncompleteSession(taskId, this.app, this.storageDir)
+      if (incompleteSessionId) {
+        // Verify the session exists in the session manager
+        const existingSession = this.sessionManager.getSessionInfo(incompleteSessionId)
+        if (existingSession) {
+          sessionId = incompleteSessionId
+          isResume = true
+        } else {
+          // Session file exists but not loaded in manager - create new session
+          const result = await this.sessionManager.createSession({
+            cwd,
+            app: this.app,
+          })
+          sessionId = result.sessionId
+        }
+      } else {
+        // No incomplete session - create new
+        const result = await this.sessionManager.createSession({
+          cwd,
+          app: this.app,
+        })
+        sessionId = result.sessionId
+      }
+    } else {
+      // No storage dir configured - can't check for incomplete sessions
+      const result = await this.sessionManager.createSession({
+        cwd,
+        app: this.app,
+      })
+      sessionId = result.sessionId
+    }
 
-    // Load the Ralph prompt and send it with task assignment
+    // Emit appropriate event
+    if (isResume) {
+      this.emit("session_resumed", { workerName, sessionId, taskId })
+    } else {
+      this.emit("session_created", { workerName, sessionId, taskId })
+    }
+
+    // Load the Ralph prompt
     const promptResult = loadSessionPrompt({
       templatesDir: TEMPLATES_DIR,
       cwd,
     })
-    const prompt = `${promptResult.content}\n\nYour assigned task: ${taskTitle}`
+
+    // Build the prompt - if resuming, tell the agent to continue from where it left off
+    let prompt: string
+    if (isResume) {
+      prompt =
+        `${promptResult.content}\n\n` +
+        `Your assigned task: ${taskTitle}\n\n` +
+        `IMPORTANT: You are resuming an interrupted session. ` +
+        `Review your previous conversation above and continue from where you left off. ` +
+        `Do not start over - pick up where the previous session was interrupted.`
+    } else {
+      prompt = `${promptResult.content}\n\nYour assigned task: ${taskTitle}`
+    }
 
     // Send the prompt (this is the system prompt for the session)
     await this.sessionManager.sendMessage(sessionId, prompt, {
