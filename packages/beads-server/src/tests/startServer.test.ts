@@ -2,8 +2,8 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
 import WebSocket from "ws"
 
 // Mock beads SDK dependencies to avoid needing a running daemon
-vi.mock(".././BdProxy.js", () => {
-  const BdProxy = class {
+vi.mock("@herbcaudill/beads-sdk", () => ({
+  BeadsClient: class {
     getInfo = vi.fn().mockResolvedValue({
       database_path: "/tmp/test-workspace/.beads/beads.db",
       daemon_connected: true,
@@ -11,12 +11,14 @@ vi.mock(".././BdProxy.js", () => {
       config: { issue_prefix: "t" },
     })
     list = vi.fn().mockResolvedValue([])
-  }
-  return { BdProxy }
-})
-
-vi.mock(".././BeadsClient.js", () => ({
+  },
+  DaemonTransport: class {
+    send = vi.fn().mockResolvedValue([])
+  },
   watchMutations: vi.fn().mockReturnValue(() => {}),
+  getAliveWorkspaces: vi.fn().mockReturnValue([]),
+  batched: vi.fn(async (items: any[], _max: number, fn: Function) => Promise.all(items.map(fn))),
+  MAX_CONCURRENT_REQUESTS: 5,
 }))
 
 vi.mock("@herbcaudill/beads-view/server", () => ({

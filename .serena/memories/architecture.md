@@ -12,7 +12,7 @@
 - **Server** (`packages/ui/server/`) — Express 5 + WebSocket
   - `RalphManager.ts` — Spawns/manages Ralph CLI processes
   - `ClaudeAdapter.ts`, `CodexAdapter.ts` — Agent adapters (extend `AgentAdapter.ts`)
-  - `BdProxy.ts` — Proxy for beads CLI commands
+  - BeadsClient — from `@herbcaudill/beads-sdk`
   - `ThemeDiscovery.ts` — VS Code theme discovery
   - `SessionRunner.ts` — Server-side session orchestration
 - **Frontend** (`packages/ui/src/`) — React 19 + Vite 7

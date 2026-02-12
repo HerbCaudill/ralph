@@ -30,7 +30,7 @@ function sendErrorResponse(res: Response, err: unknown, defaultMessage: string):
  * Interface for the beads proxy that task routes depend on.
  * This mirrors the BeadsClient API surface used by the routes.
  */
-export interface TaskRouteBdProxy {
+export interface TaskRouteBeadsClient {
   listWithParents(options: {
     status?: "open" | "in_progress" | "blocked" | "deferred" | "closed"
     ready?: boolean
@@ -77,8 +77,8 @@ export interface TaskRouteBdProxy {
 export interface TaskRoutesOptions {
   /** Express app to register routes on. */
   app: Express
-  /** Accessor function to get a BdProxy for the given workspace path. */
-  getBdProxy: (workspacePath: string) => TaskRouteBdProxy
+  /** Accessor function to get a BeadsClient for the given workspace path. */
+  getBeadsClient: (workspacePath: string) => TaskRouteBeadsClient
 }
 
 /**
@@ -100,7 +100,7 @@ export interface TaskRoutesOptions {
  * - GET    /api/tasks/:id/comments
  * - POST   /api/tasks/:id/comments
  */
-export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void {
+export function registerTaskRoutes({ app, getBeadsClient }: TaskRoutesOptions): void {
   /**
    * Extract the workspace query parameter from a request.
    * Returns the workspace path or sends a 400 error if missing.
@@ -126,8 +126,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         all?: string
       }
 
-      const bdProxy = getBdProxy(workspace)
-      const issues = await bdProxy.listWithParents({
+      const beads = getBeadsClient(workspace)
+      const issues = await beads.listWithParents({
         status: status as "open" | "in_progress" | "blocked" | "deferred" | "closed" | undefined,
         ready: ready === "true",
         all: all === "true",
@@ -148,8 +148,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       const { parent } = req.query as { parent?: string }
 
-      const bdProxy = getBdProxy(workspace)
-      const issues = await bdProxy.blocked(parent)
+      const beads = getBeadsClient(workspace)
+      const issues = await beads.blocked(parent)
 
       res.status(200).json({ ok: true, issues })
     } catch (err) {
@@ -178,7 +178,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy(workspace)
+      const beads = getBeadsClient(workspace)
       const options: {
         title: string
         description?: string
@@ -195,7 +195,7 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
       if (parent) options.parent = parent
       if (labels) options.labels = labels
 
-      const issue = await bdProxy.create(options)
+      const issue = await beads.create(options)
 
       if (!issue) {
         res.status(500).json({ ok: false, error: "Failed to create task - no issue returned" })
@@ -216,8 +216,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy(workspace)
-      const issues = await bdProxy.show(id)
+      const beads = getBeadsClient(workspace)
+      const issues = await beads.show(id)
 
       if (issues.length === 0) {
         res.status(404).json({ ok: false, error: "Task not found" })
@@ -247,8 +247,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         parent?: string
       }
 
-      const bdProxy = getBdProxy(workspace)
-      const issues = await bdProxy.update(id, {
+      const beads = getBeadsClient(workspace)
+      const issues = await beads.update(id, {
         title,
         description,
         priority,
@@ -277,8 +277,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy(workspace)
-      await bdProxy.delete(id)
+      const beads = getBeadsClient(workspace)
+      await beads.delete(id)
 
       res.status(200).json({ ok: true })
     } catch (err) {
@@ -294,8 +294,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy(workspace)
-      const labels = await bdProxy.getLabels(id)
+      const beads = getBeadsClient(workspace)
+      const labels = await beads.getLabels(id)
 
       res.status(200).json({ ok: true, labels })
     } catch (err) {
@@ -317,8 +317,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy(workspace)
-      const result = await bdProxy.addLabel(id, label.trim())
+      const beads = getBeadsClient(workspace)
+      const result = await beads.addLabel(id, label.trim())
 
       res.status(201).json({ ok: true, result })
     } catch (err) {
@@ -340,8 +340,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy(workspace)
-      const result = await bdProxy.removeLabel(id, label.trim())
+      const beads = getBeadsClient(workspace)
+      const result = await beads.removeLabel(id, label.trim())
 
       res.status(200).json({ ok: true, result })
     } catch (err) {
@@ -363,8 +363,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy(workspace)
-      const result = await bdProxy.addBlocker(id, blockerId.trim())
+      const beads = getBeadsClient(workspace)
+      const result = await beads.addBlocker(id, blockerId.trim())
 
       res.status(201).json({ ok: true, result })
     } catch (err) {
@@ -386,8 +386,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy(workspace)
-      const result = await bdProxy.removeBlocker(id, blockerId.trim())
+      const beads = getBeadsClient(workspace)
+      const result = await beads.removeBlocker(id, blockerId.trim())
 
       res.status(200).json({ ok: true, result })
     } catch (err) {
@@ -401,8 +401,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
       const workspace = extractWorkspace(req, res)
       if (!workspace) return
 
-      const bdProxy = getBdProxy(workspace)
-      const labels = await bdProxy.listAllLabels()
+      const beads = getBeadsClient(workspace)
+      const labels = await beads.listAllLabels()
 
       res.status(200).json({ ok: true, labels })
     } catch (err) {
@@ -418,8 +418,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
 
       const id = req.params.id as string
 
-      const bdProxy = getBdProxy(workspace)
-      const comments = await bdProxy.getComments(id)
+      const beads = getBeadsClient(workspace)
+      const comments = await beads.getComments(id)
 
       res.status(200).json({ ok: true, comments })
     } catch (err) {
@@ -441,8 +441,8 @@ export function registerTaskRoutes({ app, getBdProxy }: TaskRoutesOptions): void
         return
       }
 
-      const bdProxy = getBdProxy(workspace)
-      await bdProxy.addComment(id, comment.trim(), author)
+      const beads = getBeadsClient(workspace)
+      await beads.addComment(id, comment.trim(), author)
 
       res.status(201).json({ ok: true })
     } catch (err) {

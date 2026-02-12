@@ -2,8 +2,7 @@
  * Type definitions for agent-related interfaces.
  *
  * These types are extracted here so that agent-server modules can reference them
- * without depending directly on ClaudeAdapter, AgentAdapter, or BdProxy
- * (which remain in the UI server package).
+ * without depending directly on ClaudeAdapter or AgentAdapter.
  */
 
 import { EventEmitter } from "node:events"

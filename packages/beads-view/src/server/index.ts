@@ -1,2 +1,2 @@
 export { registerTaskRoutes } from "./taskRoutes"
-export type { TaskRoutesOptions, TaskRouteBdProxy } from "./taskRoutes"
+export type { TaskRoutesOptions, TaskRouteBeadsClient } from "./taskRoutes"

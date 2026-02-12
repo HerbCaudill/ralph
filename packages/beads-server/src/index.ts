@@ -81,18 +81,14 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
   }
 }
 
-/**
- * Get a BdProxy-compatible object backed by the SDK's BeadsClient.
- * This adapter bridges the BeadsClient API to what task routes expect.
- */
-function getBdProxy(workspace: string) {
+/** Create a BeadsClient for the given workspace path. */
+function getBeadsClient(workspace: string) {
   const resolved = resolveWorkspacePath(workspace)
   if (!resolved) {
     throw new WorkspaceNotFoundError(workspace)
   }
 
   // Use DaemonTransport directly for synchronous per-request usage
-  // (BeadsClient requires async connect, but BdProxy was sync)
   const transport = new DaemonTransport(resolved, { actor: "beads-server" })
 
   return {
@@ -454,7 +450,7 @@ function createApp(_config: BeadsServerConfig): Express {
         return
       }
 
-      const proxy = getBdProxy(workspacePath)
+      const proxy = getBeadsClient(workspacePath)
       const info = (await proxy.getInfo()) as {
         daemon_connected: boolean
         daemon_status?: string
@@ -513,7 +509,7 @@ function createApp(_config: BeadsServerConfig): Express {
 
           let activeIssueCount: number | undefined
           try {
-            const wsProxy = getBdProxy(ws.path)
+            const wsProxy = getBeadsClient(ws.path)
             const [openIssues, inProgressIssues] = await Promise.all([
               wsProxy.list({ status: "open", limit: 0 }),
               wsProxy.list({ status: "in_progress", limit: 0 }),
@@ -605,7 +601,7 @@ function createApp(_config: BeadsServerConfig): Express {
   })
 
   // ── Task management (delegated to @herbcaudill/beads-view) ────────
-  registerTaskRoutes({ app, getBdProxy })
+  registerTaskRoutes({ app, getBeadsClient })
 
   return app
 }
