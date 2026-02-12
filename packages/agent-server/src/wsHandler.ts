@@ -1,6 +1,6 @@
 import type { WebSocket, RawData } from "ws"
 import type { ChatSessionManager } from "./ChatSessionManager.js"
-import type { AgentEvent } from "@herbcaudill/ralph-shared"
+import type { AgentEvent } from "./agentTypes.js"
 import type { WorkerOrchestratorManager } from "./lib/WorkerOrchestratorManager.js"
 
 /** A connected WebSocket client. */

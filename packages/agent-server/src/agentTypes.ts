@@ -6,33 +6,105 @@
  */
 
 import { EventEmitter } from "node:events"
+import type {
+  MessageEventType,
+  ThinkingEventType,
+  ToolUseEventType,
+  ToolResultEventType,
+  ResultEventType,
+  ErrorEventType,
+  StatusEventType,
+  BaseEventType,
+  AgentStatus as CanonicalAgentStatus,
+} from "@herbcaudill/agent-view"
 
-// Re-export event types from shared package
-export type {
-  AgentEvent,
-  AgentMessageEvent,
-  AgentThinkingEvent,
-  AgentToolUseEvent,
-  AgentToolResultEvent,
-  AgentResultEvent,
-  AgentErrorEvent,
-  AgentStatusEvent,
-  AgentStatus,
-} from "@herbcaudill/ralph-shared"
+// ── Backward-compatible event types ──────────────────────────────────
 
-// Re-export type guards from shared package
-export {
-  isAgentMessageEvent,
-  isAgentThinkingEvent,
-  isAgentToolUseEvent,
-  isAgentToolResultEvent,
-  isAgentResultEvent,
-  isAgentErrorEvent,
-  isAgentStatusEvent,
-} from "@herbcaudill/ralph-shared"
+/**
+ * Makes `id` optional and removes `readonly` modifiers for backward compatibility.
+ *
+ * The canonical types from agent-view require `id` (auto-generated via Effect
+ * Schema defaults during decoding) and use `readonly` properties. Existing code
+ * creates events without `id` and expects mutable properties, so the
+ * backward-compatible aliases relax these constraints.
+ */
+type BackwardCompat<T> = { -readonly [K in keyof T as K extends "id" ? never : K]: T[K] } & {
+  id?: string
+}
 
-// Import types we need for local use
-import type { AgentEvent, AgentStatus, AgentStatusEvent } from "@herbcaudill/ralph-shared"
+/** Base properties for all agent events. */
+export type AgentEventBase = BackwardCompat<BaseEventType>
+
+/** A text message from the assistant. */
+export type AgentMessageEvent = BackwardCompat<MessageEventType>
+
+/** A thinking block from the assistant (extended thinking). */
+export type AgentThinkingEvent = BackwardCompat<ThinkingEventType>
+
+/** A tool invocation by the assistant. */
+export type AgentToolUseEvent = BackwardCompat<ToolUseEventType>
+
+/** The result of a tool invocation. */
+export type AgentToolResultEvent = BackwardCompat<ToolResultEventType>
+
+/** Final result of an agent run. */
+export type AgentResultEvent = BackwardCompat<ResultEventType>
+
+/** An error from the agent. */
+export type AgentErrorEvent = BackwardCompat<ErrorEventType>
+
+/** Agent status changed. */
+export type AgentStatusEvent = BackwardCompat<StatusEventType>
+
+/** Union type for all normalized agent events. */
+export type AgentEvent =
+  | AgentMessageEvent
+  | AgentThinkingEvent
+  | AgentToolUseEvent
+  | AgentToolResultEvent
+  | AgentResultEvent
+  | AgentErrorEvent
+  | AgentStatusEvent
+
+/** Possible agent statuses. */
+export type AgentStatus = CanonicalAgentStatus
+
+// ── Type guards ──────────────────────────────────────────────────────
+
+/** Check if an event is a message event. */
+export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
+  return event.type === "message"
+}
+
+/** Check if an event is a thinking event. */
+export function isAgentThinkingEvent(event: AgentEvent): event is AgentThinkingEvent {
+  return event.type === "thinking"
+}
+
+/** Check if an event is a tool use event. */
+export function isAgentToolUseEvent(event: AgentEvent): event is AgentToolUseEvent {
+  return event.type === "tool_use"
+}
+
+/** Check if an event is a tool result event. */
+export function isAgentToolResultEvent(event: AgentEvent): event is AgentToolResultEvent {
+  return event.type === "tool_result"
+}
+
+/** Check if an event is a result event. */
+export function isAgentResultEvent(event: AgentEvent): event is AgentResultEvent {
+  return event.type === "result"
+}
+
+/** Check if an event is an error event. */
+export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
+  return event.type === "error"
+}
+
+/** Check if an event is a status event. */
+export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
+  return event.type === "status"
+}
 
 // ── Conversation types (from ClaudeAdapter) ──────────────────────────
 

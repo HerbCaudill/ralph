@@ -23,7 +23,7 @@ export type {
   AgentAdapterEvents,
 } from "./agentTypes.js"
 
-// Re-export event types from shared package
+// Re-export backward-compatible event types
 export type {
   AgentEvent,
   AgentMessageEvent,

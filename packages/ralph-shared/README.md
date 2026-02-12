@@ -14,30 +14,6 @@ pnpm add @herbcaudill/ralph-shared
 
 ## Contents
 
-### Agent Events (`events/`)
-
-Normalized event types for agent communication. All agent adapters (Claude, Codex, etc.) translate their native events into these standard types.
-
-**Types:**
-
-- `AgentMessageEvent` - Text message from the assistant
-- `AgentToolUseEvent` - Tool invocation by the assistant
-- `AgentToolResultEvent` - Result of a tool invocation
-- `AgentResultEvent` - Final result of an agent run
-- `AgentErrorEvent` - Error from the agent
-- `AgentStatusEvent` - Agent status change
-- `AgentEvent` - Union type of all events
-- `AgentStatus` - Possible agent statuses (`idle`, `starting`, `running`, `paused`, `stopping`, `stopped`)
-
-**Type Guards:**
-
-- `isAgentMessageEvent(event)` - Check if event is a message
-- `isAgentToolUseEvent(event)` - Check if event is a tool use
-- `isAgentToolResultEvent(event)` - Check if event is a tool result
-- `isAgentResultEvent(event)` - Check if event is a result
-- `isAgentErrorEvent(event)` - Check if event is an error
-- `isAgentStatusEvent(event)` - Check if event is a status change
-
 ### Beads Domain Types (`beads/`)
 
 Types for interacting with the beads issue tracking system.
@@ -82,27 +58,19 @@ The main entry point is browser-safe. Node-only utilities are available via sepa
 ## Usage
 
 ```typescript
-// Browser-safe imports (events, types)
-import {
-  AgentEvent,
-  AgentMessageEvent,
-  isAgentMessageEvent,
-  BdIssue,
-  IssueStatus,
-} from "@herbcaudill/ralph-shared"
+// Browser-safe imports (types)
+import { BdIssue, IssueStatus } from "@herbcaudill/ralph-shared"
+
+// Agent event types are in @herbcaudill/agent-view (canonical)
+// or @herbcaudill/agent-server (backward-compatible aliases)
+import type { MessageEventType } from "@herbcaudill/agent-view"
+import type { AgentEvent } from "@herbcaudill/agent-server"
 
 // Node-only imports (prompt loading)
 import { loadPrompt } from "@herbcaudill/ralph-shared/prompts"
 
 // Node-only imports (session persistence)
 import { SessionPersister, getDefaultStorageDir } from "@herbcaudill/ralph-shared/server"
-
-// Type guard example
-function handleEvent(event: AgentEvent) {
-  if (isAgentMessageEvent(event)) {
-    console.log("Message:", event.content)
-  }
-}
 
 // Load prompt with customization (Node.js only)
 const result = loadPrompt({

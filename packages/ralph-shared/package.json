@@ -46,9 +46,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@herbcaudill/agent-view": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@herbcaudill/beads-sdk": "workspace:*",
     "@types/node": "^24.10.9",

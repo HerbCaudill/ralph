@@ -1,22 +1,9 @@
-export type {
-  AgentEvent,
-  AgentEventBase,
-  AgentMessageEvent,
-  AgentThinkingEvent,
-  AgentToolUseEvent,
-  AgentToolResultEvent,
-  AgentResultEvent,
-  AgentErrorEvent,
-  AgentStatusEvent,
-  AgentStatus,
-} from "./types.js"
-
-export {
-  isAgentMessageEvent,
-  isAgentThinkingEvent,
-  isAgentToolUseEvent,
-  isAgentToolResultEvent,
-  isAgentResultEvent,
-  isAgentErrorEvent,
-  isAgentStatusEvent,
-} from "./guards.js"
+/**
+ * Event-related exports from ralph-shared.
+ *
+ * Core event types and guards have moved to their canonical homes:
+ * - Types: @herbcaudill/agent-view (canonical) and @herbcaudill/agent-server (backward-compat aliases)
+ * - Guards: @herbcaudill/agent-server/agentTypes
+ *
+ * This module is intentionally empty.
+ */

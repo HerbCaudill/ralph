@@ -1,54 +1,8 @@
 /**
  * Type guards for agent events.
  *
- * Core event type guards (isAgentMessageEvent, etc.) are thin wrappers that
- * narrow the backward-compatible AgentEvent union from types.ts.
+ * Guard functions have moved to @herbcaudill/agent-server/agentTypes alongside
+ * the backward-compatible Agent* type aliases they narrow.
+ *
+ * This module is intentionally empty after removing the re-exports.
  */
-
-import type {
-  AgentEvent,
-  AgentMessageEvent,
-  AgentThinkingEvent,
-  AgentToolUseEvent,
-  AgentToolResultEvent,
-  AgentResultEvent,
-  AgentErrorEvent,
-  AgentStatusEvent,
-} from "./types.js"
-
-// Core event type guards (backward-compatible signatures)
-
-/** Check if an event is a message event. */
-export function isAgentMessageEvent(event: AgentEvent): event is AgentMessageEvent {
-  return event.type === "message"
-}
-
-/** Check if an event is a thinking event. */
-export function isAgentThinkingEvent(event: AgentEvent): event is AgentThinkingEvent {
-  return event.type === "thinking"
-}
-
-/** Check if an event is a tool use event. */
-export function isAgentToolUseEvent(event: AgentEvent): event is AgentToolUseEvent {
-  return event.type === "tool_use"
-}
-
-/** Check if an event is a tool result event. */
-export function isAgentToolResultEvent(event: AgentEvent): event is AgentToolResultEvent {
-  return event.type === "tool_result"
-}
-
-/** Check if an event is a result event. */
-export function isAgentResultEvent(event: AgentEvent): event is AgentResultEvent {
-  return event.type === "result"
-}
-
-/** Check if an event is an error event. */
-export function isAgentErrorEvent(event: AgentEvent): event is AgentErrorEvent {
-  return event.type === "error"
-}
-
-/** Check if an event is a status event. */
-export function isAgentStatusEvent(event: AgentEvent): event is AgentStatusEvent {
-  return event.type === "status"
-}
