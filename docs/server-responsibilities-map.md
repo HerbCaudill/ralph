@@ -1,7 +1,7 @@
 # Server Responsibilities Map
 
 > This document catalogs all routes, WebSocket channels, and shared types in the current
-> `packages/ui/server/` codebase to guide the split into separate **beads-server** and
+> `packages/ralph-ui/server/` codebase to guide the split into separate **beads-server** and
 > **agent-server** packages.
 
 ## HTTP Routes

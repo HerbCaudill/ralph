@@ -44,9 +44,9 @@ UI vitest setup polyfills `HTMLDialogElement.showModal` and `close` for dialog-b
 
 pnpm workspace with these packages:
 
-- **`packages/cli/`** (`@herbcaudill/ralph`) — CLI tool (published to npm)
-- **`packages/ui/`** (`@herbcaudill/ralph-ui`) — Web UI with React frontend and SharedWorker for loop orchestration
-- **`packages/shared/`** (`@herbcaudill/ralph-shared`) — Shared utilities, types, and prompt templates
+- **`packages/ralph-cli/`** (`@herbcaudill/ralph`) — CLI tool (published to npm)
+- **`packages/ralph-ui/`** (`@herbcaudill/ralph-ui`) — Web UI with React frontend and SharedWorker for loop orchestration
+- **`packages/ralph-shared/`** (`@herbcaudill/ralph-shared`) — Shared utilities, types, and prompt templates
 - **`packages/beads-view/`** (`@herbcaudill/beads-view`) — Task management UI/state/hooks. Two export paths: main (client) and `/server` (Express task routes)
 - **`packages/beads-server/`** (`@herbcaudill/beads-server`) — Express server for task management (port 4243)
 - **`packages/agent-view/`** (`@herbcaudill/agent-view`) — Agent chat UI components, event schema (Effect Schema), hotkeys, hooks
@@ -65,7 +65,7 @@ pnpm workspace with these packages:
 
 ### Template system
 
-All prompt templates live in `packages/shared/templates/` as the single source of truth. Templates can be imported as raw strings via Vite's `?raw` suffix:
+All prompt templates live in `packages/ralph-shared/templates/` as the single source of truth. Templates can be imported as raw strings via Vite's `?raw` suffix:
 
 ```typescript
 import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/manage-tasks.prompt.md?raw"
@@ -84,13 +84,13 @@ Two independent servers:
 - **beads-server** (port 4243) — Task management REST API + WebSocket for mutation events
 - **agent-server** (port 4244) — Agent chat server with adapters (Claude, Codex), session management (ChatSessionManager, SessionPersister), JSONL persistence, WebSocket streaming. Supports `customRoutes` in config for app-specific route injection.
 
-In dev mode, `packages/ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes injected via `customRoutes`.
+In dev mode, `packages/ralph-ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes injected via `customRoutes`.
 
 The UI is frontend-only, connecting to both servers. Ralph loop orchestration happens client-side in a SharedWorker (`ralphWorker.ts`).
 
 ### Multi-agent support
 
-Agents implement `AgentAdapter` base class. Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types. Core event types are defined in `@herbcaudill/agent-view` and re-exported by `packages/shared/`.
+Agents implement `AgentAdapter` base class. Available: **Claude** (default, requires `ANTHROPIC_API_KEY`) and **Codex** (`OPENAI_API_KEY` optional). Each adapter normalizes native events into `AgentEvent` types. Core event types are defined in `@herbcaudill/agent-view` and re-exported by `packages/ralph-shared/`.
 
 ### Context file loading
 
@@ -118,7 +118,7 @@ Task-chat sessions are read-only for file editing: session creation passes an `a
 
 Session resume functionality: When `storageDir` is provided, the manager checks for incomplete sessions before creating new ones. `findIncompleteSession(taskId, app, storageDir)` scans JSONL session files for sessions that have a `<start_task>` marker but no corresponding `<end_task>` marker. If found, the existing session is resumed with a prompt telling the agent to continue from where it left off, rather than starting over.
 
-The UI layer uses `useWorkerOrchestrator` hook (in `packages/ui/src/hooks/`) to connect to the orchestrator via WebSocket, receiving real-time state updates for all workers. The hook tracks `activeSessionIds` and `latestSessionId` to enable session dropdown spinners and auto-selection when new sessions are created. An `onSessionCreated` callback option allows the caller to respond to new sessions (e.g., refetch session list, auto-select). The `WorkerControlBar` component displays active workers with per-worker pause/resume/stop controls and a global stop-after-current button.
+The UI layer uses `useWorkerOrchestrator` hook (in `packages/ralph-ui/src/hooks/`) to connect to the orchestrator via WebSocket, receiving real-time state updates for all workers. The hook tracks `activeSessionIds` and `latestSessionId` to enable session dropdown spinners and auto-selection when new sessions are created. An `onSessionCreated` callback option allows the caller to respond to new sessions (e.g., refetch session list, auto-select). The `WorkerControlBar` component displays active workers with per-worker pause/resume/stop controls and a global stop-after-current button.
 
 ## Runtime interaction (CLI)
 
@@ -131,7 +131,7 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 
 ## UI conventions
 
-- Components lead files; helpers in `packages/ui/src/lib` (one function per file)
+- Components lead files; helpers in `packages/ralph-ui/src/lib` (one function per file)
 - Use discriminated `*ChatEvent` interfaces with type-guard functions in `packages/agent-view/src/lib/is*.ts`
 - Controller/presentational pattern: **FooController** connects hooks to **Foo** (pure presentational)
 - Use the shared Dialog component from `@herbcaudill/components` instead of native `<dialog>` elements
@@ -166,8 +166,8 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 
 This pattern is used in:
 
-- `packages/ui/src/hooks/useWorkerOrchestrator.ts` — Defers WebSocket creation via `setTimeout(0)` with cleanup in the return function to clear the timeout
-- `packages/ui/src/hooks/useRalphLoop.ts` — Follows the same pattern
+- `packages/ralph-ui/src/hooks/useWorkerOrchestrator.ts` — Defers WebSocket creation via `setTimeout(0)` with cleanup in the return function to clear the timeout
+- `packages/ralph-ui/src/hooks/useRalphLoop.ts` — Follows the same pattern
 
 The fix wraps the WebSocket constructor and handlers in a setTimeout, then clears the timeout in the cleanup function if unmounted before the deferred connection occurs.
 

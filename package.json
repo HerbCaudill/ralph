@@ -6,7 +6,7 @@
   "scripts": {
     "benchmark": "node scripts/benchmark-tests.js",
     "build": "pnpm -r build",
-    "cli": "tsx packages/cli/src/index.ts",
+    "cli": "tsx packages/ralph-cli/src/index.ts",
     "build:cli": "pnpm --filter ralph build",
     "demo:agent": "node scripts/agent-demo.js",
     "demo:beads": "node scripts/beads-demo.js",

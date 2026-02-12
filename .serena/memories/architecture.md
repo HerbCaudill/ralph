@@ -2,20 +2,20 @@
 
 ## Core Flow
 
-1. **CLI entry** (`packages/cli/src/cli.ts`) — Main mode, watch mode, agent selection, init, replay
-2. **Session runner** (`packages/cli/src/components/SessionRunner.tsx`) — Spawns `claude` CLI with `--output-format stream-json`, parses events, writes to `.ralph/events-*.jsonl`
-3. **Event processing** (`packages/cli/src/components/eventToBlocks.ts`) — Transforms raw JSON events into display blocks
+1. **CLI entry** (`packages/ralph-cli/src/cli.ts`) — Main mode, watch mode, agent selection, init, replay
+2. **Session runner** (`packages/ralph-cli/src/components/SessionRunner.tsx`) — Spawns `claude` CLI with `--output-format stream-json`, parses events, writes to `.ralph/events-*.jsonl`
+3. **Event processing** (`packages/ralph-cli/src/components/eventToBlocks.ts`) — Transforms raw JSON events into display blocks
 4. **Display** (`EventDisplay.tsx`, `ToolUse.tsx`) — Renders via Ink
 
 ## UI Package
 
-- **Server** (`packages/ui/server/`) — Express 5 + WebSocket
+- **Server** (`packages/ralph-ui/server/`) — Express 5 + WebSocket
   - `RalphManager.ts` — Spawns/manages Ralph CLI processes
   - `ClaudeAdapter.ts`, `CodexAdapter.ts` — Agent adapters (extend `AgentAdapter.ts`)
   - BeadsClient — from `@herbcaudill/beads-sdk`
   - `ThemeDiscovery.ts` — VS Code theme discovery
   - `SessionRunner.ts` — Server-side session orchestration
-- **Frontend** (`packages/ui/src/`) — React 19 + Vite 7
+- **Frontend** (`packages/ralph-ui/src/`) — React 19 + Vite 7
   - `store/` — Zustand store (multi-instance via Map)
   - `hooks/` — Domain-specific hooks
   - `components/` — Organized by domain (chat, events, tasks, layout)
@@ -34,5 +34,5 @@
 
 ## Template System
 
-- Core prompt: `packages/cli/templates/core.prompt.md`
+- Core prompt: `packages/ralph-cli/templates/core.prompt.md`
 - Workflow: `.ralph/workflow.prompt.md` (repo-specific)

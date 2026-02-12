@@ -18,7 +18,7 @@ export const getPromptContent = (): string => {
   const promptFile = join(ralphDir, "prompt.prompt.md")
 
   // Resolve templates directory relative to this file's location.
-  // In source (src/lib/): ../../templates → packages/cli/templates ✓
+  // In source (src/lib/): ../../templates → packages/ralph-cli/templates ✓
   // In bundle (dist/):    ../../templates → packages/templates ✗
   // We try both paths to support both dev and bundled modes.
   let templatesDir = join(__dirname, "..", "..", "templates")

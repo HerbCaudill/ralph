@@ -3,6 +3,7 @@
 Ralph is an autonomous AI session engine that wraps the Claude CLI to run iterative development workflows. It spawns Claude CLI processes with custom prompts and todo lists, captures streaming JSON output, and orchestrates multiple sessions.
 
 ## Tech Stack
+
 - **Language:** TypeScript (strict, ES modules)
 - **Runtime:** Node.js 24.x (pinned 24.13.0 in `.prototools`)
 - **Package Manager:** pnpm (workspace monorepo)
@@ -15,11 +16,13 @@ Ralph is an autonomous AI session engine that wraps the Claude CLI to run iterat
 - **Fonts:** IBM Plex
 
 ## Monorepo Structure (pnpm workspace)
-- `packages/cli/` (`@herbcaudill/ralph`) — CLI tool, published to npm
-- `packages/ui/` (`@herbcaudill/ralph-ui`) — Web app: Express server + React frontend
-- `packages/shared/` (`@herbcaudill/ralph-shared`) — Shared utilities and types
+
+- `packages/ralph-cli/` (`@herbcaudill/ralph`) — CLI tool, published to npm
+- `packages/ralph-ui/` (`@herbcaudill/ralph-ui`) — Web app: Express server + React frontend
+- `packages/ralph-shared/` (`@herbcaudill/ralph-shared`) — Shared utilities and types
 - `packages/beads-view/` — Task management UI/state extraction (in progress)
 - `packages/agent-view/`, `packages/agent-view-claude/`, `packages/agent-view-codex/`, `packages/agent-view-theme/` — Agent view packages
 
 ## Issue Tracking
+
 Uses `bd` (beads) for all issue tracking. Git-backed JSONL format.
