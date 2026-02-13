@@ -1,4 +1,5 @@
-import { getAliveWorkspaces, getWorkspaceId } from "@herbcaudill/beads-sdk"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
+import { getAliveWorkspaces } from "@herbcaudill/beads-sdk/node"
 
 /**
  * Resolve a workspace identifier to a filesystem path.

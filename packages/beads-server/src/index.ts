@@ -6,15 +6,17 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
 import {
-  BeadsClient,
-  DaemonTransport,
-  watchMutations,
-  getAliveWorkspaces,
   batched,
   MAX_CONCURRENT_REQUESTS,
   type MutationEvent,
   type Issue,
 } from "@herbcaudill/beads-sdk"
+import {
+  BeadsClient,
+  DaemonTransport,
+  watchMutations,
+  getAliveWorkspaces,
+} from "@herbcaudill/beads-sdk/node"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
 import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
@@ -36,7 +38,7 @@ export {
   readRegistry,
   getRegistryPath,
   isProcessRunning,
-} from "@herbcaudill/beads-sdk"
+} from "@herbcaudill/beads-sdk/node"
 export { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 
 const execFileAsync = promisify(execFile)

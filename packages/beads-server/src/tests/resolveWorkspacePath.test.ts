@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { resolveWorkspacePath } from "../resolveWorkspacePath.js"
-import * as beadsSdk from "@herbcaudill/beads-sdk"
+import * as beadsSdkNode from "@herbcaudill/beads-sdk/node"
 
-// Mock getAliveWorkspaces from the SDK
-vi.mock("@herbcaudill/beads-sdk", async importOriginal => {
-  const original = (await importOriginal()) as typeof beadsSdk
+// Mock getAliveWorkspaces from the SDK node entry point
+vi.mock("@herbcaudill/beads-sdk/node", async importOriginal => {
+  const original = (await importOriginal()) as typeof beadsSdkNode
   return {
     ...original,
     getAliveWorkspaces: vi.fn(),
   }
 })
 
-const mockGetAliveWorkspaces = vi.mocked(beadsSdk.getAliveWorkspaces)
+const mockGetAliveWorkspaces = vi.mocked(beadsSdkNode.getAliveWorkspaces)
 
 describe("resolveWorkspacePath", () => {
   beforeEach(() => {

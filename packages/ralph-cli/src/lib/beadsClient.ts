@@ -2,9 +2,11 @@
  * Beads SDK wrappers for the CLI.
  * Implements new-issue detection by polling the issue list and diffing.
  */
-import { BeadsClient, type MutationEvent } from "@herbcaudill/beads-sdk"
+import { type MutationEvent } from "@herbcaudill/beads-sdk"
+import { BeadsClient } from "@herbcaudill/beads-sdk/node"
 
-export { BeadsClient, type MutationEvent } from "@herbcaudill/beads-sdk"
+export { type MutationEvent } from "@herbcaudill/beads-sdk"
+export { BeadsClient } from "@herbcaudill/beads-sdk/node"
 
 /**
  * Poll for new issue creation events.
