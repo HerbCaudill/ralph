@@ -1,1 +1,1 @@
-../../shared/templates/core.prompt.md
+../../ralph-shared/templates/core.prompt.md

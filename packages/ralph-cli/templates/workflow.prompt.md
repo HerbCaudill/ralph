@@ -1,1 +1,1 @@
-../../shared/templates/workflow.prompt.md
+../../ralph-shared/templates/workflow.prompt.md
