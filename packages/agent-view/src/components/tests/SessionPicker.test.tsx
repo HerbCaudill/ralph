@@ -605,5 +605,41 @@ describe("SessionPicker", () => {
       // Should NOT show "No task" anywhere - both sessions have task data
       expect(screen.queryByText("No task")).toBeNull()
     })
+
+    it("should show running session task info in dropdown when viewing historical session", () => {
+      // Bug r-x7w2u: When viewing a historical session, the running session's
+      // dropdown item was incorrectly showing "No task" because task info was
+      // being derived from the viewed session's events instead of session data.
+      renderPicker({
+        currentSessionId: "s2", // Viewing historical session
+        sessions: [
+          makeSession({
+            sessionId: "s1",
+            taskId: "r-running",
+            taskTitle: "Running task",
+            isActive: true,
+          }),
+          makeSession({
+            sessionId: "s2",
+            taskId: "r-historical",
+            taskTitle: "Historical task",
+            lastMessageAt: Date.now() - 60 * 60 * 1000,
+          }),
+        ],
+      })
+      fireEvent.click(screen.getByRole("button"))
+
+      // Trigger should show the viewed (historical) session's task info
+      const button = screen.getByRole("button", { name: /r-historical/i })
+      expect(button.textContent).toContain("r-historical")
+      expect(button.textContent).toContain("Historical task")
+
+      // The running session's row should still show its own task info
+      expect(screen.getByText("r-running")).toBeDefined()
+      expect(screen.getByText("Running task")).toBeDefined()
+
+      // Should NOT show "No task" - both sessions have task data
+      expect(screen.queryByText("No task")).toBeNull()
+    })
   })
 })
