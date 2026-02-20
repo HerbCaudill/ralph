@@ -124,6 +124,8 @@ vi.mock("../../hooks/useRalphLoop", () => ({
   }),
 }))
 
+const mockRefetchSessions = vi.fn()
+
 vi.mock("../../hooks/useRalphSessions", () => ({
   useRalphSessions: () => ({
     sessions: mockSessions,
@@ -131,24 +133,38 @@ vi.mock("../../hooks/useRalphSessions", () => ({
     isViewingHistorical: mockIsViewingHistorical,
     selectSession: mockSelectSession,
     clearHistorical: mockClearHistorical,
+    refetchSessions: mockRefetchSessions,
   }),
 }))
 
+// Capture the onSessionCreated callback passed to useWorkerOrchestrator
+let capturedOrchestratorOnSessionCreated:
+  | ((event: { workerName: string; sessionId: string }) => void)
+  | undefined
+
 vi.mock("../../hooks/useWorkerOrchestrator", () => ({
-  useWorkerOrchestrator: () => ({
-    state: mockOrchestratorState,
-    workers: mockOrchestratorWorkers,
-    maxWorkers: 3,
-    activeWorkerCount: Object.keys(mockOrchestratorWorkers).length,
-    isConnected: true,
-    start: mockOrchestratorStart,
-    stop: mockOrchestratorStop,
-    stopAfterCurrent: mockOrchestratorStopAfterCurrent,
-    cancelStopAfterCurrent: mockOrchestratorCancelStop,
-    pauseWorker: mockPauseWorker,
-    resumeWorker: mockResumeWorker,
-    stopWorker: mockStopWorker,
-  }),
+  useWorkerOrchestrator: (
+    _workspaceId?: string,
+    options?: { onSessionCreated?: (event: { workerName: string; sessionId: string }) => void },
+  ) => {
+    capturedOrchestratorOnSessionCreated = options?.onSessionCreated
+    return {
+      state: mockOrchestratorState,
+      workers: mockOrchestratorWorkers,
+      maxWorkers: 3,
+      activeWorkerCount: Object.keys(mockOrchestratorWorkers).length,
+      isConnected: true,
+      activeSessionIds: [],
+      latestSessionId: null,
+      start: mockOrchestratorStart,
+      stop: mockOrchestratorStop,
+      stopAfterCurrent: mockOrchestratorStopAfterCurrent,
+      cancelStopAfterCurrent: mockOrchestratorCancelStop,
+      pauseWorker: mockPauseWorker,
+      resumeWorker: mockResumeWorker,
+      stopWorker: mockStopWorker,
+    }
+  },
 }))
 
 vi.mock("../../hooks/useTaskChat", () => ({
@@ -646,6 +662,86 @@ describe("WorkspaceView worker orchestrator integration", () => {
       handler()
 
       expect(mockOrchestratorCancelStop).toHaveBeenCalled()
+    })
+  })
+
+  describe("orchestrator session creation events", () => {
+    beforeEach(() => {
+      capturedOrchestratorOnSessionCreated = undefined
+      mockSessions = [
+        {
+          sessionId: "live-session-1",
+          adapter: "claude",
+          firstMessageAt: 1000,
+          lastMessageAt: 3000,
+          firstUserMessage: "task-1",
+          taskId: "task-1",
+          taskTitle: "Live session task",
+        },
+      ]
+      mockHistoricalEvents = null
+      mockIsViewingHistorical = false
+    })
+
+    it("passes onSessionCreated callback to useWorkerOrchestrator", () => {
+      renderWorkspaceView()
+      expect(capturedOrchestratorOnSessionCreated).toBeDefined()
+    })
+
+    it("calls refetchSessions when orchestrator creates a session", () => {
+      renderWorkspaceView()
+      expect(capturedOrchestratorOnSessionCreated).toBeDefined()
+
+      capturedOrchestratorOnSessionCreated!({
+        workerName: "Ralph",
+        sessionId: "new-session-123",
+      })
+
+      expect(mockRefetchSessions).toHaveBeenCalled()
+    })
+
+    it("auto-selects the newly created session", () => {
+      renderWorkspaceView()
+      expect(capturedOrchestratorOnSessionCreated).toBeDefined()
+
+      capturedOrchestratorOnSessionCreated!({
+        workerName: "Ralph",
+        sessionId: "new-session-123",
+      })
+
+      expect(mockSelectSession).toHaveBeenCalledWith("new-session-123")
+    })
+
+    it("updates URL to include the new session ID", () => {
+      renderWorkspaceView()
+      expect(capturedOrchestratorOnSessionCreated).toBeDefined()
+
+      capturedOrchestratorOnSessionCreated!({
+        workerName: "Ralph",
+        sessionId: "new-session-123",
+      })
+
+      expect(mockNavigate).toHaveBeenCalledWith("/test/workspace/new-session-123", {
+        replace: true,
+      })
+    })
+
+    it("does not auto-select if viewing a historical session", () => {
+      mockIsViewingHistorical = true
+      mockHistoricalEvents = [{ type: "assistant", timestamp: 500 } as ChatEvent]
+
+      renderWorkspaceView()
+      expect(capturedOrchestratorOnSessionCreated).toBeDefined()
+
+      capturedOrchestratorOnSessionCreated!({
+        workerName: "Ralph",
+        sessionId: "new-session-123",
+      })
+
+      // Should refetch but NOT auto-select
+      expect(mockRefetchSessions).toHaveBeenCalled()
+      expect(mockSelectSession).not.toHaveBeenCalled()
+      expect(mockNavigate).not.toHaveBeenCalled()
     })
   })
 })
