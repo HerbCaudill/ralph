@@ -110,6 +110,8 @@ export { registerPromptRoutes } from "./routes/promptRoutes.js"
 export type { PromptRouteContext } from "./routes/promptRoutes.js"
 export { parseTaskLifecycleEvent } from "./lib/parseTaskLifecycleEvent.js"
 export type { TaskLifecycleEventData } from "./lib/parseTaskLifecycleEvent.js"
+export { findIncompleteSession, findAnyIncompleteSession } from "./lib/findIncompleteSession.js"
+export type { IncompleteSessionResult } from "./lib/findIncompleteSession.js"
 
 // ── Server ───────────────────────────────────────────────────────────
 

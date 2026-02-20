@@ -7,7 +7,7 @@ import {
   type WorkerInfo,
 } from "./WorkerOrchestrator.js"
 import { type RunAgentResult } from "./WorkerLoop.js"
-import type { ChatSessionManager } from "@herbcaudill/agent-server"
+import { type ChatSessionManager, findAnyIncompleteSession } from "@herbcaudill/agent-server"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
 
 /**
@@ -70,6 +70,9 @@ export interface WorkerOrchestratorManagerEvents extends WorkerOrchestratorEvent
 
   /** Emitted when a session is created for a worker */
   session_created: [{ workerName: string; sessionId: string }]
+
+  /** Emitted when an incomplete session is resumed */
+  session_resumed: [{ workerName: string; sessionId: string; taskId: string }]
 }
 
 /**
@@ -176,6 +179,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
 
   /**
    * Run an agent session in the given directory.
+   * First checks for incomplete sessions to resume, then creates new if needed.
    * The agent picks its own task via `bd ready` and claims it.
    */
   private async runAgentSession(
@@ -198,7 +202,35 @@ export class WorkerOrchestratorManager extends EventEmitter {
     // Path format: {basePath}/{workerName}/{workId}
     const workerName = this.extractWorkerNameFromPath(cwd)
 
-    // Create a new session
+    // Check for incomplete sessions to resume
+    const persister = this.sessionManager.getPersister()
+    const incompleteSession = await findAnyIncompleteSession(persister, workerName)
+
+    if (incompleteSession) {
+      // Resume the incomplete session
+      const { sessionId, taskId } = incompleteSession
+      this.emit("session_resumed", { workerName, sessionId, taskId })
+
+      // Send a continuation prompt to resume the interrupted session
+      const resumePrompt = [
+        `Your previous session was interrupted while working on task ${taskId}.`,
+        `Please continue where you left off. Check the task status with \`bd show ${taskId}\` and resume your work.`,
+        ``,
+        `If the task is already complete, run \`bd close ${taskId}\` and end your session.`,
+        `If the task is still in progress, continue working on it.`,
+      ].join("\n")
+
+      await this.sessionManager.sendMessage(sessionId, resumePrompt, {
+        isSystemPrompt: true,
+      })
+
+      // Wait for session to complete
+      await this.waitForSessionCompletion(sessionId)
+
+      return { exitCode: 0, sessionId }
+    }
+
+    // No incomplete session found - create a new one
     const result = await this.sessionManager.createSession({
       cwd,
       app: workerName,
