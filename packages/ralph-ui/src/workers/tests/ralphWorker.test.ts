@@ -328,7 +328,7 @@ describe("ralphWorker", () => {
       const originalWs = state.ws
 
       // Immediately restore with running state (before WS opens)
-      // This simulates the real useRalphLoop flow where both messages are sent in same tick
+      // This simulates the real useSessionEvents flow where both messages are sent in same tick
       handlePortMessage(
         {
           type: "restore_session",
@@ -1017,7 +1017,7 @@ describe("ralphWorker", () => {
         expect(state.ws?.readyState).toBe(MockWebSocket.OPEN)
       })
 
-      // 4. Restore the session (as useRalphLoop does from localStorage)
+      // 4. Restore the session (as useSessionEvents does when restoring from URL)
       handlePortMessage(
         {
           type: "restore_session",

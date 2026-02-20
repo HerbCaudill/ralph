@@ -10,16 +10,16 @@ import { extractTaskLifecycleEvent } from "../lib/extractTaskLifecycleEvent"
 import { normalizeEventId } from "../lib/normalizeEventId"
 
 /**
+ * @deprecated Use `useSessionEvents` instead. This hook is kept for backwards compatibility
+ * but is no longer used by any components. The localStorage session persistence has been
+ * removed since the orchestrator handles session management server-side.
+ *
+ * Original description:
  * Hook that communicates with the SharedWorker (ralphWorker.ts) for session event subscription.
  * Subscribes to a specific workspace and provides state for events, streaming status,
  * and connection status, along with actions to pause, resume, and send messages.
  *
- * IMPORTANT: This hook is now focused on session subscription only.
  * Loop management (start, stop, stop-after-current) is handled by useWorkerOrchestrator.
- *
- * Persists the most recent session ID per workspace in localStorage. On page reload,
- * restores the last session for the current workspace so past events can be viewed,
- * without auto-starting a new Ralph run.
  */
 export function useRalphLoop(
   /** Workspace identifier in `owner/repo` format. */

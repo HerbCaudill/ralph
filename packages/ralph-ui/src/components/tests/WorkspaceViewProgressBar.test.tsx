@@ -30,20 +30,16 @@ vi.mock("../../hooks/useWorkspaceParams", () => ({
   }),
 }))
 
-vi.mock("../../hooks/useRalphLoop", () => ({
-  useRalphLoop: () => ({
+vi.mock("../../hooks/useSessionEvents", () => ({
+  useSessionEvents: () => ({
     events: [],
     isStreaming: false,
-    controlState: mockControlState,
     connectionStatus: "connected",
     sessionId: null,
-    isStoppingAfterCurrent: false,
-    start: vi.fn(),
     pause: vi.fn(),
     resume: vi.fn(),
     sendMessage: vi.fn(),
-    stopAfterCurrent: vi.fn(),
-    cancelStopAfterCurrent: vi.fn(),
+    clearEvents: vi.fn(),
   }),
 }))
 

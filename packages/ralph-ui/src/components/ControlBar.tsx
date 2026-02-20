@@ -7,7 +7,7 @@ import {
 } from "@tabler/icons-react"
 import { cn } from "@herbcaudill/agent-view"
 import { Button } from "@herbcaudill/components"
-import type { ControlState } from "@/hooks/useRalphLoop"
+import type { ControlState } from "@herbcaudill/agent-view"
 
 /**
  * Props for the ControlBar component.

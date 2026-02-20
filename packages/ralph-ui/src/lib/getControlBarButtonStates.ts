@@ -1,4 +1,4 @@
-import type { ControlState } from "@/hooks/useRalphLoop"
+import type { ControlState } from "@herbcaudill/agent-view"
 
 /**
  * Extended control state for the Ralph loop.

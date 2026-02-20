@@ -9,7 +9,7 @@ import { fetchSessionEvents } from "../lib/fetchSessionEvents"
  * Allows selecting a historical session to view its events.
  */
 export function useRalphSessions(
-  /** The current active session ID (from useRalphLoop). */
+  /** The current active session ID (from useSessionEvents). */
   currentSessionId: string | null,
   /** Workspace ID for filtering sessions. */
   workspaceId?: string,

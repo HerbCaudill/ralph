@@ -7,7 +7,7 @@ import { TaskChatPanel } from "./TaskChatPanel"
 import { TaskDetailSheet } from "./TaskDetailSheet"
 import { HotkeysDialog } from "./HotkeysDialog"
 import { CommandPalette } from "./CommandPalette"
-import { useRalphLoop } from "../hooks/useRalphLoop"
+import { useSessionEvents } from "../hooks/useSessionEvents"
 import { useRalphSessions } from "../hooks/useRalphSessions"
 import { useAccentColor } from "../hooks/useAccentColor"
 import { useTaskChat } from "../hooks/useTaskChat"
@@ -68,9 +68,9 @@ export function WorkspaceView() {
     }
   }
 
-  // Ralph loop state from SharedWorker
-  // Note: controlState/connectionStatus/stop handling now comes from orchestrator.
-  // useRalphLoop is still needed for session event subscription and per-session controls.
+  // Session event subscription via SharedWorker
+  // Note: controlState/connectionStatus/stop handling comes from orchestrator.
+  // useSessionEvents provides session event subscription and per-session controls.
   const {
     events: liveEvents,
     isStreaming: liveIsStreaming,
@@ -78,7 +78,7 @@ export function WorkspaceView() {
     pause,
     resume,
     sendMessage,
-  } = useRalphLoop(workspaceId)
+  } = useSessionEvents(workspaceId)
 
   // Task state from beads-view (declared early so sessions can use it for title resolution)
   const { tasks, refresh } = useTasks({ all: true })

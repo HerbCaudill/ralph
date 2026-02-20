@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import type { ControlState } from "@/hooks/useRalphLoop"
+import type { ControlState } from "@herbcaudill/agent-view"
 import { controlStateToRalphStatus, type RalphStatus } from "@/lib/getControlBarButtonStates"
 
 /**

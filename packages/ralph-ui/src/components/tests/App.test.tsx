@@ -53,17 +53,16 @@ vi.mock("../../hooks/useThemes", () => ({
 }))
 
 // Mock the hooks and components that depend on external services
-vi.mock("../../hooks/useRalphLoop", () => ({
-  useRalphLoop: () => ({
+vi.mock("../../hooks/useSessionEvents", () => ({
+  useSessionEvents: () => ({
     events: [],
     isStreaming: false,
-    controlState: "idle",
     connectionStatus: "disconnected",
-    start: vi.fn(),
+    sessionId: null,
     pause: vi.fn(),
     resume: vi.fn(),
-    stop: vi.fn(),
     sendMessage: vi.fn(),
+    clearEvents: vi.fn(),
   }),
 }))
 

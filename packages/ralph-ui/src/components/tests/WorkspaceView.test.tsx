@@ -11,7 +11,7 @@ import type { WorkerInfo, OrchestratorState } from "../../hooks/useWorkerOrchest
 let mockSessionId: string | null = "live-session-1"
 let mockLiveEvents: ChatEvent[] = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
 let mockIsStreaming = false
-let mockControlState: "idle" | "running" | "paused" = "idle"
+// Note: controlState now comes from useWorkerOrchestrator, not useSessionEvents
 
 let mockSessions: RalphSessionIndexEntry[] = [
   {
@@ -107,20 +107,16 @@ vi.mock("../../hooks/useWorkspaceParams", () => ({
   }),
 }))
 
-vi.mock("../../hooks/useRalphLoop", () => ({
-  useRalphLoop: () => ({
+vi.mock("../../hooks/useSessionEvents", () => ({
+  useSessionEvents: () => ({
     events: mockLiveEvents,
     isStreaming: mockIsStreaming,
-    controlState: mockControlState,
     connectionStatus: "connected",
     sessionId: mockSessionId,
-    isStoppingAfterCurrent: false,
-    start: vi.fn(),
     pause: vi.fn(),
     resume: vi.fn(),
     sendMessage: vi.fn(),
-    stopAfterCurrent: vi.fn(),
-    cancelStopAfterCurrent: vi.fn(),
+    clearEvents: vi.fn(),
   }),
 }))
 
@@ -360,7 +356,7 @@ describe("WorkspaceView session history wiring", () => {
     mockSessionId = "live-session-1"
     mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
     mockIsStreaming = false
-    mockControlState = "idle"
+    // controlState now comes from orchestrator
     mockOrchestratorState = "stopped"
     mockOrchestratorWorkers = {}
     mockUrlSessionId = undefined
@@ -395,7 +391,7 @@ describe("WorkspaceView session history wiring", () => {
       expect(capturedRalphRunnerProps.sessions).toEqual(mockSessions)
     })
 
-    it("passes the sessionId from useRalphLoop to RalphRunner", () => {
+    it("passes the sessionId from useSessionEvents to RalphRunner", () => {
       renderWorkspaceView()
       expect(capturedRalphRunnerProps.sessionId).toBe("live-session-1")
     })
@@ -537,7 +533,7 @@ describe("WorkspaceView worker orchestrator integration", () => {
     mockSessionId = "live-session-1"
     mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
     mockIsStreaming = false
-    mockControlState = "idle"
+    // controlState now comes from orchestrator
     mockOrchestratorState = "stopped"
     mockOrchestratorWorkers = {}
     mockSessions = [
@@ -758,7 +754,7 @@ describe("WorkspaceView Header agent/model and workspace props", () => {
     mockSessionId = "live-session-1"
     mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
     mockIsStreaming = false
-    mockControlState = "idle"
+    // controlState now comes from orchestrator
     mockOrchestratorState = "stopped"
     mockOrchestratorWorkers = {}
     mockSessions = []
@@ -804,7 +800,7 @@ describe("WorkspaceView session ID URL integration", () => {
     mockSessionId = "live-session-1"
     mockLiveEvents = [{ type: "assistant", timestamp: 1000 } as ChatEvent]
     mockIsStreaming = false
-    mockControlState = "idle"
+    // controlState now comes from orchestrator
     mockOrchestratorState = "stopped"
     mockOrchestratorWorkers = {}
     mockUrlSessionId = undefined

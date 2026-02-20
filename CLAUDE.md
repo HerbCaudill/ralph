@@ -87,7 +87,7 @@ Two independent servers:
 
 In dev mode, `packages/ralph-ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes (including orchestrator REST routes and WebSocket commands) injected via `customRoutes`.
 
-The UI is frontend-only, connecting to both servers. Ralph loop orchestration happens client-side in a SharedWorker (`ralphWorker.ts`).
+The UI is frontend-only, connecting to both servers. Ralph loop orchestration happens server-side in the orchestrator; the UI subscribes to session events via a SharedWorker (`ralphWorker.ts`) using `useSessionEvents` hook.
 
 ### Multi-agent support
 
@@ -171,7 +171,9 @@ JSON mode (`ralph --json`) accepts stdin commands: `{"type": "message", "text": 
 This pattern is used in:
 
 - `packages/ralph-ui/src/hooks/useWorkerOrchestrator.ts` — Defers WebSocket creation via `setTimeout(0)` with cleanup in the return function to clear the timeout
-- `packages/ralph-ui/src/hooks/useRalphLoop.ts` — Follows the same pattern
+- `packages/ralph-ui/src/hooks/useSessionEvents.ts` — Follows the same pattern for session event subscription
+
+Note: `useRalphLoop.ts` is deprecated; components should use `useSessionEvents` instead. The `ControlState` type is imported directly from `@herbcaudill/agent-view`.
 
 The fix wraps the WebSocket constructor and handlers in a setTimeout, then clears the timeout in the cleanup function if unmounted before the deferred connection occurs.
 
@@ -202,6 +204,7 @@ The fix wraps the WebSocket constructor and handlers in a setTimeout, then clear
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
