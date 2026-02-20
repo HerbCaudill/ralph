@@ -114,7 +114,7 @@ Task-chat sessions are read-only for file editing: session creation passes an `a
 
 ### Concurrent workers
 
-`WorktreeManager`, `WorkerLoop`, `WorkerOrchestrator`, and `WorkerOrchestratorManager` (all in `packages/ralph-ui/server/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from `packages/ralph-ui/server/lib/workerNames.ts`). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), spawns an agent session, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
+`WorktreeManager`, `WorkerLoop`, `WorkerOrchestrator`, and `WorkerOrchestratorManager` (all in `packages/ralph-ui/server/lib/`) manage concurrent Ralph workers via git worktrees. Workers use Simpsons character names (`WORKER_NAMES` from `packages/ralph-ui/server/lib/workerNames.ts`). Each worker creates a worktree branch (`ralph/{name}/{task-id}`), runs an agent session via `ChatSessionManager`, merges back to main, runs tests, and cleans up. The orchestrator manages a pool of up to N workers.
 
 Orchestrator REST routes live in `packages/ralph-ui/server/routes/orchestratorRoutes.ts`. Orchestrator WebSocket commands (subscribe, start, stop, pause, resume) are handled by `packages/ralph-ui/server/lib/orchestratorWsHandler.ts`, which provides `handleOrchestratorWsMessage()` and `setupOrchestratorEventForwarding()` functions that ralph-ui's `startAgentServer.ts` wires into the agent-server's WebSocket pipeline.
 
