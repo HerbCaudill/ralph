@@ -313,12 +313,21 @@ export async function runDev(
 ) {
   const {
     label = "dev",
+    preStart = [],
     preBuild = [],
     services = [],
     frontend,
     env: extraEnv = {},
     waitForHealthz = false,
   } = config
+
+  // Run pre-start hooks (e.g. ensure Dolt server is running).
+  if (preStart.length > 0) {
+    console.log("🔌 prerequisites...")
+    for (const fn of preStart) {
+      await fn()
+    }
+  }
 
   // Run pre-build commands sequentially (topological dependency order).
   // Output is captured and only shown on failure.

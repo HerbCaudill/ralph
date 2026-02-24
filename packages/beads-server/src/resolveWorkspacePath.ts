@@ -1,5 +1,7 @@
 import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { getAliveWorkspaces } from "@herbcaudill/beads-sdk/node"
+import { existsSync } from "node:fs"
+import path from "node:path"
 
 /**
  * Resolve a workspace identifier to a filesystem path.
@@ -7,6 +9,7 @@ import { getAliveWorkspaces } from "@herbcaudill/beads-sdk/node"
  * Accepts either:
  * - A full filesystem path (e.g., `/Users/herbcaudill/Code/HerbCaudill/ralph`) — returned as-is
  * - A workspace ID (`owner/repo` format, e.g., `herbcaudill/ralph`) — resolved via the registry
+ *   or the `WORKSPACE_PATH` environment variable
  *
  * Returns the filesystem path, or null if the workspace ID couldn't be resolved.
  */
@@ -19,12 +22,21 @@ export function resolveWorkspacePath(
     return workspace
   }
 
-  // Otherwise, try to resolve as a workspace ID (owner/repo)
+  // Try to resolve as a workspace ID (owner/repo) from the daemon registry
   const aliveWorkspaces = getAliveWorkspaces()
   for (const ws of aliveWorkspaces) {
     const id = getWorkspaceId({ workspacePath: ws.path })
     if (id === workspace.toLowerCase()) {
       return ws.path
+    }
+  }
+
+  // Fallback: check WORKSPACE_PATH env var
+  const workspacePath = process.env.WORKSPACE_PATH
+  if (workspacePath && existsSync(path.join(workspacePath, ".beads"))) {
+    const id = getWorkspaceId({ workspacePath })
+    if (id === workspace.toLowerCase()) {
+      return workspacePath
     }
   }
 

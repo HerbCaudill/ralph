@@ -17,6 +17,7 @@ import {
   watchMutations,
   getAliveWorkspaces,
 } from "@herbcaudill/beads-sdk/node"
+import { existsSync } from "node:fs"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
 import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
@@ -42,6 +43,23 @@ export {
 export { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 
 const execFileAsync = promisify(execFile)
+
+/**
+ * Get workspaces from the daemon registry, falling back to `WORKSPACE_PATH` env var.
+ * The daemon registry may be empty when using Dolt directly without a bd daemon.
+ */
+function discoverWorkspaces(): Array<{ path: string; name: string }> {
+  const alive = getAliveWorkspaces()
+  if (alive.length > 0) return alive
+
+  // Fallback: use WORKSPACE_PATH if set and it has a .beads directory
+  const workspacePath = process.env.WORKSPACE_PATH
+  if (workspacePath && existsSync(path.join(workspacePath, ".beads"))) {
+    return [{ path: workspacePath, name: path.basename(workspacePath) }]
+  }
+
+  return []
+}
 
 // Module state (no workspace state -- workspace is per-request)
 
@@ -292,8 +310,8 @@ function startMutationPolling(interval: number = 1000): void {
     stopMutationWatcher()
   }
 
-  // Poll all alive workspaces
-  const workspaces = getAliveWorkspaces()
+  // Poll all discovered workspaces
+  const workspaces = discoverWorkspaces()
   const cleanups: (() => void)[] = []
 
   for (const ws of workspaces) {
@@ -502,7 +520,7 @@ function createApp(_config: BeadsServerConfig): Express {
   // List workspaces (no workspace param needed)
   app.get("/api/workspaces", async (_req: Request, res: Response) => {
     try {
-      const workspaces = getAliveWorkspaces()
+      const workspaces = discoverWorkspaces()
 
       // Add accent colors and active issue counts for each workspace
       const workspacesWithMetadata = await Promise.all(

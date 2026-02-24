@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { resolveWorkspacePath } from "../resolveWorkspacePath.js"
 import * as beadsSdkNode from "@herbcaudill/beads-sdk/node"
+import * as fs from "node:fs"
 
 // Mock getAliveWorkspaces from the SDK node entry point
 vi.mock("@herbcaudill/beads-sdk/node", async importOriginal => {
@@ -11,15 +12,32 @@ vi.mock("@herbcaudill/beads-sdk/node", async importOriginal => {
   }
 })
 
+vi.mock("node:fs", async importOriginal => {
+  const original = (await importOriginal()) as typeof fs
+  return {
+    ...original,
+    existsSync: vi.fn(original.existsSync),
+  }
+})
+
 const mockGetAliveWorkspaces = vi.mocked(beadsSdkNode.getAliveWorkspaces)
+const mockExistsSync = vi.mocked(fs.existsSync)
 
 describe("resolveWorkspacePath", () => {
+  const originalEnv = process.env.WORKSPACE_PATH
+
   beforeEach(() => {
     vi.clearAllMocks()
+    delete process.env.WORKSPACE_PATH
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    if (originalEnv !== undefined) {
+      process.env.WORKSPACE_PATH = originalEnv
+    } else {
+      delete process.env.WORKSPACE_PATH
+    }
   })
 
   describe("absolute path input", () => {
@@ -101,6 +119,43 @@ describe("resolveWorkspacePath", () => {
           startedAt: "2024-01-01T00:00:00Z",
         },
       ])
+
+      const result = resolveWorkspacePath("herbcaudill/ralph")
+      expect(result).toBeNull()
+    })
+  })
+
+  describe("WORKSPACE_PATH fallback", () => {
+    it("resolves from WORKSPACE_PATH when registry is empty", () => {
+      mockGetAliveWorkspaces.mockReturnValue([])
+      process.env.WORKSPACE_PATH = "/Users/herbcaudill/Code/HerbCaudill/ralph"
+      mockExistsSync.mockReturnValue(true)
+
+      const result = resolveWorkspacePath("herbcaudill/ralph")
+      expect(result).toBe("/Users/herbcaudill/Code/HerbCaudill/ralph")
+    })
+
+    it("returns null when WORKSPACE_PATH does not match requested ID", () => {
+      mockGetAliveWorkspaces.mockReturnValue([])
+      process.env.WORKSPACE_PATH = "/Users/herbcaudill/Code/SomeOrg/other-project"
+      mockExistsSync.mockReturnValue(true)
+
+      const result = resolveWorkspacePath("herbcaudill/ralph")
+      expect(result).toBeNull()
+    })
+
+    it("returns null when WORKSPACE_PATH has no .beads directory", () => {
+      mockGetAliveWorkspaces.mockReturnValue([])
+      process.env.WORKSPACE_PATH = "/Users/herbcaudill/Code/HerbCaudill/ralph"
+      mockExistsSync.mockReturnValue(false)
+
+      const result = resolveWorkspacePath("herbcaudill/ralph")
+      expect(result).toBeNull()
+    })
+
+    it("returns null when WORKSPACE_PATH is not set", () => {
+      mockGetAliveWorkspaces.mockReturnValue([])
+      delete process.env.WORKSPACE_PATH
 
       const result = resolveWorkspacePath("herbcaudill/ralph")
       expect(result).toBeNull()

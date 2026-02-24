@@ -6,10 +6,12 @@
  * then keeps them in watch mode so changes trigger automatic rebuilds.
  */
 import { runDev } from "./lib/devRunner.js"
+import { ensureDoltServer } from "./lib/ensureDoltServer.js"
 
 const workspacePath = process.env.WORKSPACE_PATH ?? process.cwd()
 
 runDev({
+  preStart: [() => ensureDoltServer(workspacePath)],
   label: "dev",
   waitForHealthz: true,
   preBuild: [
