@@ -1,3 +1,4 @@
+import { CliTransport } from "./transport/cli.js"
 import { DaemonTransport, type DaemonTransportOptions } from "./transport/daemon.js"
 import { JsonlTransport } from "./transport/jsonl.js"
 import { ChangePoller } from "./poller.js"
@@ -58,25 +59,25 @@ export class BeadsClient {
 
     this.workspaceRoot = workspaceRoot
 
-    // Try daemon first
-    const daemon = new DaemonTransport(workspaceRoot, {
+    // Use CLI transport (bd daemon was removed in v0.50.0)
+    const cli = new CliTransport(workspaceRoot, {
       requestTimeout: this.options.requestTimeout,
       actor: this.options.actor,
     })
 
     try {
-      await daemon.send("ping", {})
-      this.daemon = daemon
-      this.transport = daemon
+      await cli.send("ping", {})
+      this.daemon = cli as unknown as DaemonTransport
+      this.transport = cli
       this.connected = true
 
-      // Start change polling
-      this.poller = new ChangePoller(daemon)
+      // Start change polling via CLI
+      this.poller = new ChangePoller(cli)
       this.poller.onChange(() => this.notifyChange())
       this.poller.start(this.options.pollInterval ?? 2000)
       return
     } catch {
-      // Daemon not available; try JSONL fallback
+      // CLI not available; try JSONL fallback
     }
 
     // Fall back to JSONL
@@ -84,8 +85,8 @@ export class BeadsClient {
     const loaded = jsonl.load()
     if (!loaded) {
       throw new Error(
-        "Could not connect to daemon or find JSONL file. " +
-          "Make sure the beads daemon is running or .beads/issues.jsonl exists.",
+        "Could not connect to bd CLI or find JSONL file. " +
+          "Make sure bd is installed and .beads/ exists.",
       )
     }
 
@@ -438,14 +439,14 @@ export function watchMutations(
   const { workspacePath, interval = 1000, since } = options
 
   const cwd = workspacePath ?? process.cwd()
-  const daemon = new DaemonTransport(cwd, { actor: "sdk" })
-  const poller = new MutationPoller(daemon, since)
+  const transport = new CliTransport(cwd, { actor: "sdk" })
+  const poller = new MutationPoller(transport, since)
   poller.onMutation(onMutation)
   poller.start(interval)
 
   return () => {
     poller.stop()
-    daemon.close()
+    transport.close()
   }
 }
 

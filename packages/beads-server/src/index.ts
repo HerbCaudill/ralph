@@ -13,6 +13,7 @@ import {
 } from "@herbcaudill/beads-sdk"
 import {
   BeadsClient,
+  CliTransport,
   DaemonTransport,
   watchMutations,
   getAliveWorkspaces,
@@ -108,8 +109,8 @@ function getBeadsClient(workspace: string) {
     throw new WorkspaceNotFoundError(workspace)
   }
 
-  // Use DaemonTransport directly for synchronous per-request usage
-  const transport = new DaemonTransport(resolved, { actor: "beads-server" })
+  // Use CliTransport (shells out to bd CLI) since the daemon was removed in bd v0.50.0
+  const transport = new CliTransport(resolved, { actor: "beads-server" })
 
   return {
     async list(

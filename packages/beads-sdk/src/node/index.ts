@@ -6,6 +6,9 @@ export type { BeadsClientOptions } from "../client.js"
 export { DaemonTransport } from "../transport/daemon.js"
 export type { DaemonTransportOptions } from "../transport/daemon.js"
 
+export { CliTransport } from "../transport/cli.js"
+export type { CliTransportOptions } from "../transport/cli.js"
+
 export { JsonlTransport } from "../transport/jsonl.js"
 
 export { findSocketPath, findJsonlPath, findBeadsDir } from "../transport/discovery.js"
