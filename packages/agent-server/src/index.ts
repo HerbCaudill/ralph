@@ -86,7 +86,7 @@ export type {
 export { registerRoutes } from "./routes.js"
 export type { RouteContext } from "./routes.js"
 export { handleWsConnection } from "./wsHandler.js"
-export type { WsClient, WsHandlerOptions } from "./wsHandler.js"
+export type { WsClient, WsHandlerOptions, WsConnectionHandlers } from "./wsHandler.js"
 
 // ── Utilities ────────────────────────────────────────────────────────
 
@@ -196,6 +196,7 @@ export async function startServer(config: AgentServerConfig): Promise<{
   wss.on("connection", (ws: WebSocket) => {
     handleWsConnection(ws, wsClients, {
       getSessionManager: () => sessionManager,
+      onConnection: config.customWsHandler,
     })
   })
 

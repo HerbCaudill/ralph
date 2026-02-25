@@ -12,10 +12,20 @@ export interface WsClient {
   workspaceId?: string
 }
 
+/** Per-connection handlers returned by the onConnection hook. */
+export interface WsConnectionHandlers {
+  /** Handle custom message types. Return true if handled. */
+  onMessage?: (msg: Record<string, unknown>) => boolean
+  /** Cleanup function called on disconnect. */
+  onClose?: () => void
+}
+
 /** Options for setting up WebSocket handling. */
 export interface WsHandlerOptions {
   /** Get the ChatSessionManager instance. */
   getSessionManager: () => ChatSessionManager
+  /** Called for each new WebSocket connection. Can return per-connection handlers for custom message types. */
+  onConnection?: (ws: WebSocket, client: WsClient) => WsConnectionHandlers | void
 }
 
 /**
@@ -33,6 +43,7 @@ export function handleWsConnection(
   const client: WsClient = { ws, subscribedSessions: new Set() }
   clients.add(client)
 
+  const connectionHandlers = options.onConnection?.(ws, client)
   const manager = options.getSessionManager()
 
   // Forward events for subscribed sessions (include workspaceId if set)
@@ -235,6 +246,11 @@ export function handleWsConnection(
           client.subscribedSessions.clear()
           break
         }
+
+        default:
+          // Delegate to custom handler if provided
+          connectionHandlers?.onMessage?.(msg)
+          break
       }
     } catch {
       // Ignore malformed messages
@@ -242,6 +258,7 @@ export function handleWsConnection(
   })
 
   ws.on("close", () => {
+    connectionHandlers?.onClose?.()
     manager.off("event", onEvent)
     manager.off("status", onStatus)
     manager.off("error", onError)

@@ -10,4 +10,9 @@ export interface AgentServerConfig {
   cwd?: string
   /** Optional callback to register additional routes on the Express app. Called after standard routes. */
   customRoutes?: (app: import("express").Express) => void
+  /** Optional callback for each new WebSocket connection. Returns per-connection message handler and cleanup. */
+  customWsHandler?: (
+    ws: import("ws").WebSocket,
+    client: import("./wsHandler.js").WsClient,
+  ) => import("./wsHandler.js").WsConnectionHandlers | void
 }
