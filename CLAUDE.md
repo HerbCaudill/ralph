@@ -85,6 +85,8 @@ Two independent servers:
 - **beads-server** (port 4243) — Task management REST API + WebSocket for mutation events
 - **agent-server** (port 4244) — Generic agent chat server with adapters (Claude, Codex), session management (ChatSessionManager, SessionPersister), JSONL persistence, WebSocket streaming. Supports `customRoutes` in config for app-specific route injection. Does **not** contain worker orchestration — that lives in ralph-ui.
 
+Workspace discovery for `/api/workspaces` combines live Beads registry entries with local sibling repositories that contain `.beads`, using `WORKSPACE_PATH` as the filesystem anchor. Workspace ID resolution follows the same fallback so routes like `owner/repo` work for sibling workspaces even when the registry is empty.
+
 In dev mode, `packages/ralph-ui/server/startAgentServer.ts` starts the agent-server with Ralph-specific routes (including orchestrator REST routes and WebSocket commands) injected via `customRoutes`.
 
 The UI is frontend-only, connecting to both servers. Ralph loop orchestration happens server-side in the orchestrator; the UI subscribes to session events via a SharedWorker (`ralphWorker.ts`) using `useSessionEvents` hook.

@@ -92,11 +92,11 @@ Registered via `registerTaskRoutes()` from `@herbcaudill/beads-view/server`:
 
 ### Workspace Management
 
-| Method | Route                   | Description                     | Category |
-| ------ | ----------------------- | ------------------------------- | -------- |
-| `GET`  | `/api/workspace`        | Current workspace info          | Beads    |
-| `GET`  | `/api/workspaces`       | List all alive workspaces       | Beads    |
-| `POST` | `/api/workspace/switch` | Switch to a different workspace | Both     |
+| Method | Route                   | Description                                | Category |
+| ------ | ----------------------- | ------------------------------------------ | -------- |
+| `GET`  | `/api/workspace`        | Current workspace info                     | Beads    |
+| `GET`  | `/api/workspaces`       | List registry and sibling Beads workspaces | Beads    |
+| `POST` | `/api/workspace/switch` | Switch to a different workspace            | Both     |
 
 ### Theme Routes
 

@@ -1,7 +1,6 @@
 import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { getAliveWorkspaces } from "@herbcaudill/beads-sdk/node"
-import { existsSync } from "node:fs"
-import path from "node:path"
+import { findSiblingBeadsWorkspaces } from "./findSiblingBeadsWorkspaces.js"
 
 /**
  * Resolve a workspace identifier to a filesystem path.
@@ -31,9 +30,8 @@ export function resolveWorkspacePath(
     }
   }
 
-  // Fallback: check WORKSPACE_PATH env var
-  const workspacePath = process.env.WORKSPACE_PATH
-  if (workspacePath && existsSync(path.join(workspacePath, ".beads"))) {
+  // Fallback: check local Beads workspaces near WORKSPACE_PATH
+  for (const workspacePath of findSiblingBeadsWorkspaces(process.env.WORKSPACE_PATH)) {
     const id = getWorkspaceId({ workspacePath })
     if (id === workspace.toLowerCase()) {
       return workspacePath

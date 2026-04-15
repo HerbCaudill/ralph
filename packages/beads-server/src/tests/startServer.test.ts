@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
 import WebSocket from "ws"
+import { mkdtemp, mkdir, rm } from "node:fs/promises"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 
 // Mock beads SDK dependencies to avoid needing a running daemon
 vi.mock("@herbcaudill/beads-sdk", () => ({
+  batched: vi.fn(async (items: any[], _max: number, fn: Function) => Promise.all(items.map(fn))),
+  MAX_CONCURRENT_REQUESTS: 5,
+}))
+
+vi.mock("@herbcaudill/beads-sdk/node", () => ({
   BeadsClient: class {
     getInfo = vi.fn().mockResolvedValue({
       database_path: "/tmp/test-workspace/.beads/beads.db",
@@ -12,13 +20,14 @@ vi.mock("@herbcaudill/beads-sdk", () => ({
     })
     list = vi.fn().mockResolvedValue([])
   },
+  CliTransport: class {
+    send = vi.fn().mockResolvedValue([])
+  },
   DaemonTransport: class {
     send = vi.fn().mockResolvedValue([])
   },
   watchMutations: vi.fn().mockReturnValue(() => {}),
   getAliveWorkspaces: vi.fn().mockReturnValue([]),
-  batched: vi.fn(async (items: any[], _max: number, fn: Function) => Promise.all(items.map(fn))),
-  MAX_CONCURRENT_REQUESTS: 5,
 }))
 
 vi.mock("@herbcaudill/beads-view/server", () => ({
@@ -30,6 +39,8 @@ import type { BeadsServerConfig } from ".././types.js"
 
 describe("startServer", () => {
   let server: Awaited<ReturnType<typeof import("node:http").createServer>> | undefined
+  let tempDir: string | undefined
+  const originalWorkspacePath = process.env.WORKSPACE_PATH
 
   const getTestConfig = async (): Promise<BeadsServerConfig> => ({
     host: "localhost",
@@ -43,6 +54,15 @@ describe("startServer", () => {
         server!.close(() => resolve())
       })
       server = undefined
+    }
+    if (tempDir) {
+      await rm(tempDir, { force: true, recursive: true })
+      tempDir = undefined
+    }
+    if (originalWorkspacePath !== undefined) {
+      process.env.WORKSPACE_PATH = originalWorkspacePath
+    } else {
+      delete process.env.WORKSPACE_PATH
     }
   })
 
@@ -95,6 +115,27 @@ describe("startServer", () => {
 
     expect(msg.type).toBe("pong")
     expect(msg.timestamp).toEqual(expect.any(Number))
+  })
+
+  it("lists sibling Beads workspaces when the registry is empty", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "beads-workspaces-"))
+    const currentWorkspace = join(tempDir, "ralph")
+    const siblingWorkspace = join(tempDir, "dotfiles")
+    await mkdir(join(currentWorkspace, ".beads"), { recursive: true })
+    await mkdir(join(siblingWorkspace, ".beads"), { recursive: true })
+    process.env.WORKSPACE_PATH = currentWorkspace
+
+    const config = await getTestConfig()
+    server = await startServer(config)
+
+    const res = await fetch(`http://${config.host}:${config.port}/api/workspaces`)
+    const body = (await res.json()) as {
+      workspaces: Array<{ path: string; name: string }>
+    }
+
+    expect(body.workspaces.map(ws => ws.path).sort()).toEqual(
+      [currentWorkspace, siblingWorkspace].sort(),
+    )
   })
 
   it("handles workspace subscription", async () => {

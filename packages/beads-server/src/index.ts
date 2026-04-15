@@ -16,11 +16,10 @@ import {
   CliTransport,
   DaemonTransport,
   watchMutations,
-  getAliveWorkspaces,
 } from "@herbcaudill/beads-sdk/node"
-import { existsSync } from "node:fs"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
 import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
+import { discoverWorkspaces } from "./discoverWorkspaces.js"
 import { ThemeDiscovery } from "./ThemeDiscovery.js"
 import {
   parseThemeObject,
@@ -44,23 +43,6 @@ export {
 export { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 
 const execFileAsync = promisify(execFile)
-
-/**
- * Get workspaces from the daemon registry, falling back to `WORKSPACE_PATH` env var.
- * The daemon registry may be empty when using Dolt directly without a bd daemon.
- */
-function discoverWorkspaces(): Array<{ path: string; name: string }> {
-  const alive = getAliveWorkspaces()
-  if (alive.length > 0) return alive
-
-  // Fallback: use WORKSPACE_PATH if set and it has a .beads directory
-  const workspacePath = process.env.WORKSPACE_PATH
-  if (workspacePath && existsSync(path.join(workspacePath, ".beads"))) {
-    return [{ path: workspacePath, name: path.basename(workspacePath) }]
-  }
-
-  return []
-}
 
 // Module state (no workspace state -- workspace is per-request)
 
