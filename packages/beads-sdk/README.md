@@ -1,8 +1,8 @@
 # @herbcaudill/beads-sdk
 
-Typed TypeScript SDK for the [beads](https://github.com/HerbCaudill/beads) issue tracker. Zero runtime dependencies.
+Typed TypeScript SDK for the [beads](https://github.com/gastownhall/beads) issue tracker. Zero runtime dependencies.
 
-Connects directly to the beads daemon via Unix socket for fast operations (<20ms), with JSONL file fallback for read-only/offline scenarios.
+Connects to beads v1 through the supported `bd --json` CLI, with JSONL file fallback for read-only/offline scenarios when an exported `.beads/issues.jsonl` file is available.
 
 ## Install
 
@@ -21,7 +21,7 @@ await client.connect("/path/to/repo")
 // List open issues
 const issues = await client.list({ status: "open" })
 
-// Create an issue (requires daemon)
+// Create an issue (requires writable bd CLI access)
 const issue = await client.create({
   title: "Fix login bug",
   priority: 1,
@@ -49,7 +49,7 @@ const bugs = await client.list({ issue_type: "bug", status: "open" })
 const labeled = await client.list({ labels: ["frontend", "urgent"] }) // all required
 const any = await client.list({ labels_any: ["frontend", "backend"] }) // any match
 
-// Text search across title and description
+// Text search across title
 const results = await client.list({ query: "login" })
 
 // Get only ready issues (open and unblocked)
@@ -116,10 +116,10 @@ await client.removeBlocker(blockedId, blockerId)
 // Check connection status
 client.isConnected()
 
-// Ping the daemon
+// Ping the bd CLI
 const pong = await client.ping()
 
-// Get daemon health info
+// Get CLI health info
 const health = await client.health()
 
 // Get database info
@@ -128,7 +128,7 @@ const info = await client.info()
 
 ### Watching for changes
 
-The SDK polls the daemon for changes and can notify you when data updates:
+The SDK polls `bd status --json --no-activity` for changes and can notify you when data updates:
 
 ```ts
 const unsub = client.onChange(() => {
@@ -139,19 +139,7 @@ const unsub = client.onChange(() => {
 unsub()
 ```
 
-For detailed mutation events (create, update, delete, status changes):
-
-```ts
-import { watchMutations } from "@herbcaudill/beads-sdk"
-
-const stop = watchMutations(event => console.log(event.Type, event.IssueID), {
-  workspacePath: "/path/to/repo",
-  interval: 1000,
-})
-
-// Later, stop watching
-stop()
-```
+Detailed daemon mutation events are not available in the v1 CLI transport.
 
 ### Registry
 
@@ -160,7 +148,7 @@ Discover available beads workspaces from the global registry:
 ```ts
 import { getAliveWorkspaces } from "@herbcaudill/beads-sdk"
 
-// Get workspaces with live daemon processes
+// Get workspaces with live registered processes
 const workspaces = getAliveWorkspaces("/current/repo")
 ```
 
@@ -168,9 +156,10 @@ const workspaces = getAliveWorkspaces("/current/repo")
 
 ```ts
 const client = new BeadsClient({
-  requestTimeout: 5000, // Daemon RPC timeout in ms (default: 5000)
+  requestTimeout: 10000, // CLI request timeout in ms (default: 10000)
   actor: "my-app", // Actor name sent with requests (default: "sdk")
   pollInterval: 2000, // Change polling interval in ms (default: 2000)
+  bdPath: "bd", // Optional path to the bd executable
 })
 ```
 
@@ -179,12 +168,12 @@ const client = new BeadsClient({
 For direct transport usage:
 
 ```ts
-import { DaemonTransport, JsonlTransport } from "@herbcaudill/beads-sdk"
+import { CliTransport, JsonlTransport } from "@herbcaudill/beads-sdk"
 
-// Direct daemon communication
-const daemon = new DaemonTransport("/path/to/repo")
-const issues = await daemon.send("list", { status: "open" })
-daemon.close()
+// Direct CLI communication
+const cli = new CliTransport("/path/to/repo")
+const issues = await cli.send("list", { status: "open" })
+cli.close()
 
 // JSONL file access (read-only)
 const jsonl = new JsonlTransport("/path/to/repo")
@@ -197,16 +186,16 @@ jsonl.close()
 
 ```
 BeadsClient
-  |-- DaemonTransport  (Unix socket -> .beads/bd.sock)
-  |-- JsonlTransport   (fallback: parse .beads/issues.jsonl)
+  |-- CliTransport     (bd --json subprocesses)
+  |-- JsonlTransport   (fallback: parse exported .beads/issues.jsonl)
   |-- ChangePoller     (polls stats for change detection)
-  |-- MutationPoller   (polls get_mutations for detailed events)
+  |-- MutationPoller   (legacy daemon-only mutation endpoint)
 ```
 
-- **DaemonTransport**: Connects to the beads daemon via Unix socket. Each RPC call opens a fresh connection. Auto-discovers socket by walking up from workspace root. Auto-starts daemon if not running.
-- **JsonlTransport**: Read-only fallback. Parses `.beads/issues.jsonl` into memory. Watches the file for changes via `fs.watch()`.
-- **ChangePoller**: Polls the daemon's `stats` endpoint and emits change events when data changes.
-- **MutationPoller**: Polls the daemon's `get_mutations` endpoint and emits detailed mutation events with type, issue ID, and status changes.
+- **CliTransport**: Runs `bd` commands with `--json`, serializing calls within one client to avoid embedded-Dolt lock contention.
+- **JsonlTransport**: Read-only fallback. Parses `.beads/issues.jsonl` into memory when that export exists. Watches the file for changes via `fs.watch()`.
+- **ChangePoller**: Polls `bd status --json --no-activity` and emits change events when data changes. Set `pollInterval: 0` to disable polling.
+- **DaemonTransport**: Legacy low-level transport for pre-v1 daemon workspaces. The high-level client no longer uses it.
 
 ## License
 

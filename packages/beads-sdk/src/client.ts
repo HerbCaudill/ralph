@@ -1,8 +1,7 @@
-import { CliTransport } from "./transport/cli.js"
-import { DaemonTransport, type DaemonTransportOptions } from "./transport/daemon.js"
+import { CliTransport, type CliTransportOptions } from "./transport/cli.js"
 import { JsonlTransport } from "./transport/jsonl.js"
 import { ChangePoller } from "./poller.js"
-import { MutationPoller, type WatchMutationsOptions } from "./mutation-poller.js"
+import type { WatchMutationsOptions } from "./mutation-poller.js"
 import { batched, MAX_CONCURRENT_REQUESTS } from "./batch.js"
 import type {
   Transport,
@@ -25,10 +24,10 @@ import type {
 
 /**
  * High-level client for the beads issue tracker.
- * Connects to the daemon via Unix socket, with JSONL fallback for reads.
+ * Connects through the beads v1 CLI, with JSONL fallback for reads.
  */
 export class BeadsClient {
-  private daemon: DaemonTransport | null = null
+  private cli: CliTransport | null = null
   private jsonl: JsonlTransport | null = null
   private transport: Transport | null = null
   private poller: ChangePoller | null = null
@@ -46,8 +45,8 @@ export class BeadsClient {
   }
 
   /**
-   * Connect to the daemon at the given workspace root.
-   * Tries the daemon first; falls back to JSONL for read-only access.
+   * Connect to beads at the given workspace root.
+   * Tries the v1 CLI first; falls back to JSONL for read-only access.
    * Idempotent: cleans up previous connections before reconnecting.
    */
   async connect(
@@ -59,25 +58,29 @@ export class BeadsClient {
 
     this.workspaceRoot = workspaceRoot
 
-    // Use CLI transport (bd daemon was removed in v0.50.0)
+    // Try the supported beads v1 CLI first.
     const cli = new CliTransport(workspaceRoot, {
       requestTimeout: this.options.requestTimeout,
       actor: this.options.actor,
+      bdPath: this.options.bdPath,
     })
 
     try {
-      await cli.send("ping", {})
-      this.daemon = cli as unknown as DaemonTransport
+      await cli.send("info", {})
+      this.cli = cli
       this.transport = cli
       this.connected = true
 
-      // Start change polling via CLI
-      this.poller = new ChangePoller(cli)
-      this.poller.onChange(() => this.notifyChange())
-      this.poller.start(this.options.pollInterval ?? 2000)
+      // Start change polling unless explicitly disabled with pollInterval: 0.
+      if (this.options.pollInterval !== 0) {
+        this.poller = new ChangePoller(cli)
+        this.poller.onChange(() => this.notifyChange())
+        this.poller.start(this.options.pollInterval ?? 2000)
+      }
       return
     } catch {
-      // CLI not available; try JSONL fallback
+      cli.close()
+      // CLI not available or no v1 database found; try JSONL fallback.
     }
 
     // Fall back to JSONL
@@ -85,8 +88,8 @@ export class BeadsClient {
     const loaded = jsonl.load()
     if (!loaded) {
       throw new Error(
-        "Could not connect to bd CLI or find JSONL file. " +
-          "Make sure bd is installed and .beads/ exists.",
+        "Could not connect to beads through the CLI or find JSONL file. " +
+          "Make sure `bd` can read this workspace or .beads/issues.jsonl exists.",
       )
     }
 
@@ -126,7 +129,7 @@ export class BeadsClient {
     }
   }
 
-  // ── Read operations ──────────────────────────────────────────────
+  // Read operations
 
   /** List issues with optional filters. */
   async list(
@@ -149,7 +152,6 @@ export class BeadsClient {
     /** Issue IDs */
     ids: string[],
   ): Promise<Issue[]> {
-    this.requireDaemon("show (batched)")
     return batched(ids, MAX_CONCURRENT_REQUESTS, id => this.show(id))
   }
 
@@ -174,51 +176,49 @@ export class BeadsClient {
     return (await this.send("stats", {})) as Stats
   }
 
-  /** Ping the daemon. */
+  /** Ping the active beads transport. */
   async ping(): Promise<{ message: string; version: string }> {
     return (await this.send("ping", {})) as { message: string; version: string }
   }
 
-  /** Get daemon health status. */
+  /** Get active transport health status. */
   async health(): Promise<HealthStatus> {
     return (await this.send("health", {})) as HealthStatus
   }
 
-  /** Get database info. Requires daemon connection. */
+  /** Get database info. */
   async info(): Promise<Info> {
-    this.requireDaemon("info")
     return (await this.send("info", {})) as Info
   }
 
-  /** Get mutations since a given timestamp. Requires daemon connection. */
+  /** Get mutations since a given timestamp. Unsupported by the v1 CLI transport. */
   async getMutations(
     /** Unix timestamp in ms to get mutations since */
     since: number = 0,
   ): Promise<MutationEvent[]> {
-    this.requireDaemon("get_mutations")
     const result = (await this.send("get_mutations", { since })) as MutationEvent[]
     return result ?? []
   }
 
-  // ── Write operations ─────────────────────────────────────────────
+  // Write operations
 
-  /** Create a new issue. Requires daemon connection (not JSONL fallback). */
+  /** Create a new issue. Requires writable CLI access, not JSONL fallback. */
   async create(
     /** Issue creation input */
     input: CreateInput,
   ): Promise<Issue> {
-    this.requireDaemon("create")
+    this.requireWritableTransport("create")
     return (await this.send("create", input as unknown as Record<string, unknown>)) as Issue
   }
 
-  /** Update an existing issue. Requires daemon connection. */
+  /** Update an existing issue. Requires writable CLI access. */
   async update(
     /** Issue ID */
     id: string,
     /** Fields to update */
     changes: UpdateInput,
   ): Promise<Issue> {
-    this.requireDaemon("update")
+    this.requireWritableTransport("update")
     return (await this.send("update", {
       id,
       ...changes,
@@ -232,29 +232,29 @@ export class BeadsClient {
     /** Fields to update */
     changes: UpdateInput,
   ): Promise<Issue[]> {
-    this.requireDaemon("update (batched)")
+    this.requireWritableTransport("update (batched)")
     return batched(ids, MAX_CONCURRENT_REQUESTS, id => this.update(id, changes))
   }
 
-  /** Close an issue. Requires daemon connection. */
+  /** Close an issue. Requires writable CLI access. */
   async close(
     /** Issue ID */
     id: string,
     /** Optional close reason */
     reason?: string,
   ): Promise<Issue> {
-    this.requireDaemon("close")
+    this.requireWritableTransport("close")
     const args: Record<string, unknown> = { id }
     if (reason) args.reason = reason
     return (await this.send("close", args)) as Issue
   }
 
-  /** Delete an issue. Requires daemon connection. */
+  /** Delete an issue. Requires writable CLI access. */
   async delete(
     /** Issue ID */
     id: string,
   ): Promise<void> {
-    this.requireDaemon("delete")
+    this.requireWritableTransport("delete")
     await this.send("delete", { id, force: true })
   }
 
@@ -263,13 +263,13 @@ export class BeadsClient {
     /** Issue IDs to delete */
     ids: string[],
   ): Promise<void> {
-    this.requireDaemon("delete (batched)")
+    this.requireWritableTransport("delete (batched)")
     await batched(ids, MAX_CONCURRENT_REQUESTS, id => this.delete(id))
   }
 
-  // ── Comments ─────────────────────────────────────────────────────
+  // Comments
 
-  /** Add a comment to an issue. Requires daemon connection. */
+  /** Add a comment to an issue. Requires writable CLI access. */
   async addComment(
     /** Issue ID */
     id: string,
@@ -278,63 +278,60 @@ export class BeadsClient {
     /** Optional comment author */
     author?: string,
   ): Promise<void> {
-    this.requireDaemon("comment_add")
+    this.requireWritableTransport("comment_add")
     const args: Record<string, unknown> = { id, text }
     if (author) args.author = author
     await this.send("comment_add", args)
   }
 
-  /** Get comments for an issue. Requires daemon connection. */
+  /** Get comments for an issue. Requires CLI access. */
   async getComments(
     /** Issue ID */
     id: string,
   ): Promise<Comment[]> {
-    this.requireDaemon("comment_list")
     return (await this.send("comment_list", { id })) as Comment[]
   }
 
-  // ── Labels ───────────────────────────────────────────────────────
+  // Labels
 
-  /** Get labels for an issue. Requires daemon connection. */
+  /** Get labels for an issue. Requires CLI access. */
   async getLabels(
     /** Issue ID */
     id: string,
   ): Promise<string[]> {
-    this.requireDaemon("label_list")
     return (await this.send("label_list", { id })) as string[]
   }
 
-  /** Add a label to an issue. Requires daemon connection. */
+  /** Add a label to an issue. Requires writable CLI access. */
   async addLabel(
     /** Issue ID */
     id: string,
     /** Label to add */
     label: string,
   ): Promise<LabelResult> {
-    this.requireDaemon("label_add")
+    this.requireWritableTransport("label_add")
     return (await this.send("label_add", { id, label })) as LabelResult
   }
 
-  /** Remove a label from an issue. Requires daemon connection. */
+  /** Remove a label from an issue. Requires writable CLI access. */
   async removeLabel(
     /** Issue ID */
     id: string,
     /** Label to remove */
     label: string,
   ): Promise<LabelResult> {
-    this.requireDaemon("label_remove")
+    this.requireWritableTransport("label_remove")
     return (await this.send("label_remove", { id, label })) as LabelResult
   }
 
-  /** List all unique labels in the database. Requires daemon connection. */
+  /** List all unique labels in the database. Requires CLI access. */
   async listAllLabels(): Promise<string[]> {
-    this.requireDaemon("label_list_all")
     return (await this.send("label_list_all", {})) as string[]
   }
 
-  // ── Dependencies ─────────────────────────────────────────────────
+  // Dependencies
 
-  /** Add a dependency between two issues. Requires daemon connection. */
+  /** Add a dependency between two issues. Requires writable CLI access. */
   async addDependency(
     /** Source issue ID */
     fromId: string,
@@ -343,7 +340,7 @@ export class BeadsClient {
     /** Dependency type */
     type: DepType,
   ): Promise<void> {
-    this.requireDaemon("dep_add")
+    this.requireWritableTransport("dep_add")
     await this.send("dep_add", {
       from_id: fromId,
       to_id: toId,
@@ -351,35 +348,35 @@ export class BeadsClient {
     })
   }
 
-  /** Add a blocking dependency between two issues. Requires daemon connection. */
+  /** Add a blocking dependency between two issues. Requires writable CLI access. */
   async addBlocker(
     /** ID of the issue being blocked */
     blockedId: string,
     /** ID of the blocking issue */
     blockerId: string,
   ): Promise<DepResult> {
-    this.requireDaemon("dep_add")
+    this.requireWritableTransport("dep_add")
     return (await this.send("dep_add", {
       from_id: blockedId,
       to_id: blockerId,
     })) as DepResult
   }
 
-  /** Remove a blocking dependency between two issues. Requires daemon connection. */
+  /** Remove a blocking dependency between two issues. Requires writable CLI access. */
   async removeBlocker(
     /** ID of the issue being blocked */
     blockedId: string,
     /** ID of the blocking issue */
     blockerId: string,
   ): Promise<DepResult> {
-    this.requireDaemon("dep_remove")
+    this.requireWritableTransport("dep_remove")
     return (await this.send("dep_remove", {
       from_id: blockedId,
       to_id: blockerId,
     })) as DepResult
   }
 
-  // ── Internals ────────────────────────────────────────────────────
+  // Internals
 
   /** Release internal transport resources (poller, watcher, subscriptions). */
   private cleanupResources(): void {
@@ -387,8 +384,8 @@ export class BeadsClient {
     this.poller = null
     this.jsonlUnsubscribe?.()
     this.jsonlUnsubscribe = null
-    this.daemon?.close()
-    this.daemon = null
+    this.cli?.close()
+    this.cli = null
     this.jsonl?.close()
     this.jsonl = null
     this.transport = null
@@ -407,14 +404,15 @@ export class BeadsClient {
     return this.transport.send(operation, args)
   }
 
-  /** Throw if not connected to the daemon (JSONL is read-only). */
-  private requireDaemon(
+  /** Throw if connected through the read-only JSONL fallback. */
+  private requireWritableTransport(
     /** Operation name for error message */
     operation: string,
   ): void {
-    if (!this.daemon) {
+    if (this.transport === this.jsonl) {
       throw new Error(
-        `Operation "${operation}" requires a daemon connection. ` + `JSONL fallback is read-only.`,
+        `Operation "${operation}" requires a writable beads connection. ` +
+          `JSONL fallback is read-only.`,
       )
     }
   }
@@ -426,35 +424,24 @@ export class BeadsClient {
 }
 
 /**
- * Watch for mutation events from the beads daemon.
- * Polls the daemon periodically for new mutations and calls the callback for each event.
+ * Watch for legacy daemon mutation events.
+ * Beads v1 CLI transport does not expose detailed mutation events.
  * Returns a cleanup function to stop watching.
  */
 export function watchMutations(
   /** Callback for each mutation event */
-  onMutation: (event: MutationEvent) => void,
+  _onMutation: (event: MutationEvent) => void,
   /** Watch options */
-  options: WatchMutationsOptions = {},
+  _options: WatchMutationsOptions = {},
 ): () => void {
-  const { workspacePath, interval = 1000, since } = options
-
-  const cwd = workspacePath ?? process.cwd()
-  const transport = new CliTransport(cwd, { actor: "sdk" })
-  const poller = new MutationPoller(transport, since)
-  poller.onMutation(onMutation)
-  poller.start(interval)
-
-  return () => {
-    poller.stop()
-    transport.close()
-  }
+  throw new Error("watchMutations is not supported by beads v1 CLI transport")
 }
 
 /** Options for creating a BeadsClient. */
-export interface BeadsClientOptions {
-  /** Timeout per daemon RPC request in ms (default: 5000) */
+export interface BeadsClientOptions extends Pick<CliTransportOptions, "bdPath"> {
+  /** Timeout per CLI request in ms (default: 10000) */
   requestTimeout?: number
-  /** Actor name sent with daemon requests (default: "sdk") */
+  /** Actor name sent with requests (default: "sdk") */
   actor?: string
   /** Change polling interval in ms (default: 2000) */
   pollInterval?: number

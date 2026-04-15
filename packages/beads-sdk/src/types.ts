@@ -4,18 +4,51 @@ export type Status =
   | "in_progress"
   | "blocked"
   | "closed"
-  | "resolved"
   | "deferred"
+  | "pinned"
+  | "hooked"
   | (string & {})
 
 /** P0 = critical, P4 = trivial. */
 export type Priority = 0 | 1 | 2 | 3 | 4
 
 /** Built-in issue types. Custom types are also allowed. */
-export type IssueType = "task" | "bug" | "feature" | "epic" | "chore" | (string & {})
+export type IssueType =
+  | "task"
+  | "bug"
+  | "feature"
+  | "epic"
+  | "chore"
+  | "decision"
+  | "message"
+  | "molecule"
+  | "spike"
+  | "story"
+  | "milestone"
+  | (string & {})
 
 /** Dependency relationship type. */
-export type DepType = "blocks" | "parent-child" | "related" | "discovered-from"
+export type DepType =
+  | "blocks"
+  | "parent-child"
+  | "conditional-blocks"
+  | "waits-for"
+  | "related"
+  | "discovered-from"
+  | "replies-to"
+  | "relates-to"
+  | "duplicates"
+  | "supersedes"
+  | "authored-by"
+  | "assigned-to"
+  | "approved-by"
+  | "attests"
+  | "tracks"
+  | "until"
+  | "caused-by"
+  | "validates"
+  | "delegated-from"
+  | (string & {})
 
 /** An issue from the beads database. */
 export interface Issue {
@@ -76,6 +109,8 @@ export interface StatsSummary {
   blocked_issues: number
   deferred_issues: number
   ready_issues: number
+  pinned_issues?: number
+  epics_eligible_for_closure?: number
   average_lead_time_hours: number
 }
 
@@ -90,13 +125,13 @@ export interface RecentActivity {
   total_changes: number
 }
 
-/** Stats response from the daemon. */
+/** Stats response from beads. */
 export interface Stats {
   summary: StatsSummary
   recent_activity?: RecentActivity
 }
 
-/** Health status from the daemon. */
+/** Health status from the active transport. */
 export interface HealthStatus {
   status: string
   version: string
@@ -123,6 +158,7 @@ export interface ListFilter {
 export interface ReadyFilter {
   assignee?: string
   priority?: Priority
+  issue_type?: IssueType
   labels?: string[]
   labels_any?: string[]
   unassigned?: boolean
@@ -166,7 +202,7 @@ export interface UpdateInput {
   remove_labels?: string[]
 }
 
-/** Transport abstraction for communicating with the beads daemon or JSONL store. */
+/** Transport abstraction for communicating with beads or a JSONL store. */
 export interface Transport {
   /** Send an operation and return the result. */
   send(
@@ -191,7 +227,7 @@ export interface RawJsonlDependency {
 
 /** A comment on an issue. */
 export interface Comment {
-  id: number
+  id: string | number
   issue_id: string
   author: string
   text: string
@@ -225,7 +261,7 @@ export interface Info {
   config?: Record<string, string>
 }
 
-/** Type of mutation event from the beads daemon. */
+/** Type of legacy daemon mutation event. */
 export type MutationType =
   | "create"
   | "update"
@@ -236,7 +272,7 @@ export type MutationType =
   | "squashed"
   | "burned"
 
-/** A mutation event from the beads daemon. */
+/** A legacy daemon mutation event. */
 export interface MutationEvent {
   Timestamp: string
   Type: MutationType

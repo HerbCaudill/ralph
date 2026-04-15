@@ -1,9 +1,9 @@
-/** Maximum concurrent daemon socket connections to avoid EPIPE from socket exhaustion. */
+/** Maximum concurrent requests used by batch client helpers. */
 export const MAX_CONCURRENT_REQUESTS = 10
 
 /**
  * Execute an async function for each item with bounded concurrency.
- * Processes items in batches to avoid overwhelming the daemon socket.
+ * Processes items in batches to avoid overwhelming the active transport.
  */
 export async function batched<T, R>(
   /** Items to process. */

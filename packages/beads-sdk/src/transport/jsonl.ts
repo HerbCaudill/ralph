@@ -13,7 +13,7 @@ import type {
 
 /**
  * Read-only transport backed by the `.beads/issues.jsonl` file.
- * Used as a fallback when the daemon is unavailable.
+ * Used as a fallback when the CLI cannot read the workspace.
  */
 export class JsonlTransport implements Transport {
   private workspaceRoot: string

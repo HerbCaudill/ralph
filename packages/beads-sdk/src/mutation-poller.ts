@@ -1,7 +1,7 @@
 import type { Transport, MutationEvent } from "./types.js"
 
 /**
- * Polls the daemon's `get_mutations` endpoint and emits detailed mutation events.
+ * Polls the legacy daemon `get_mutations` endpoint and emits detailed mutation events.
  * Unlike ChangePoller (which only detects "something changed"), this provides
  * the actual mutation events with type, issue ID, and status changes.
  */
@@ -64,7 +64,7 @@ export class MutationPoller {
         if (mutationTime > this.lastTimestamp) this.lastTimestamp = mutationTime
       }
     } catch {
-      // Daemon might be temporarily unavailable; skip this cycle
+      // Mutation endpoint might be temporarily unavailable; skip this cycle
     }
   }
 }

@@ -1,7 +1,7 @@
 import type { Transport } from "./types.js"
 
 /**
- * Polls the daemon's `stats` endpoint on a configurable interval
+ * Polls the active transport's `stats` endpoint on a configurable interval
  * and emits change events when the data changes. At most one poll
  * request is in flight at any time; interval ticks that fire while
  * a poll is running are skipped to prevent overlapping requests and
@@ -64,7 +64,7 @@ export class ChangePoller {
       }
       this.lastHash = hash
     } catch {
-      // Daemon might be temporarily unavailable; skip this cycle
+      // The active transport might be temporarily unavailable; skip this cycle
     } finally {
       this.polling = false
     }

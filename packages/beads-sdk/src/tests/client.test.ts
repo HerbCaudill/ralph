@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { BeadsClient } from "../client.js"
+import { BeadsClient, watchMutations } from "../client.js"
 import type { Issue } from "../types.js"
 
 /** Create a minimal JSONL issue record. */
@@ -41,6 +41,46 @@ describe("BeadsClient", () => {
   })
 
   describe("connect", () => {
+    it("connects through the v1 CLI transport when a beads database is available", async () => {
+      const bdPath = join(tempDir, "bd")
+      writeFileSync(
+        bdPath,
+        `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[0] === "info") {
+  console.log("Beads Database Information");
+  console.log("Database: ${join(beadsDir, "embeddeddolt")}");
+  console.log("Mode: direct");
+  console.log("Issue Count: 1");
+  process.exit(0);
+}
+if (args[0] === "status") {
+  console.log(JSON.stringify({ summary: { total_issues: 1 } }));
+  process.exit(0);
+}
+if (args[0] === "list") {
+  console.log(JSON.stringify([{ id: "bd-cli", title: "From CLI", status: "open", priority: 2, issue_type: "task", created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z" }]));
+  process.exit(0);
+}
+if (args[0] === "version") {
+  console.log(JSON.stringify({ version: "1.0.0" }));
+  process.exit(0);
+}
+console.log(JSON.stringify({}));
+`,
+      )
+      chmodSync(bdPath, 0o755)
+
+      const client = new BeadsClient({ bdPath, pollInterval: 0 })
+      await client.connect(tempDir)
+
+      const issues = await client.list()
+      expect(issues).toHaveLength(1)
+      expect(issues[0].id).toBe("bd-cli")
+
+      await client.disconnect()
+    })
+
     it("connects via JSONL fallback when no daemon is available", async () => {
       writeFileSync(jsonlPath, JSON.stringify(makeIssue()))
       const client = new BeadsClient()
@@ -54,6 +94,14 @@ describe("BeadsClient", () => {
       rmSync(jsonlPath, { force: true })
       const client = new BeadsClient()
       await expect(client.connect(tempDir)).rejects.toThrow()
+    })
+  })
+
+  describe("watchMutations", () => {
+    it("throws because beads v1 CLI does not expose detailed mutation events", () => {
+      expect(() => watchMutations(vi.fn(), { workspacePath: tempDir })).toThrow(
+        "not supported by beads v1",
+      )
     })
   })
 
@@ -181,7 +229,7 @@ describe("BeadsClient", () => {
       const client = new BeadsClient()
       await client.connect(tempDir)
 
-      await expect(client.create({ title: "New" })).rejects.toThrow("daemon connection")
+      await expect(client.create({ title: "New" })).rejects.toThrow("writable beads connection")
 
       await client.disconnect()
     })
@@ -191,7 +239,9 @@ describe("BeadsClient", () => {
       const client = new BeadsClient()
       await client.connect(tempDir)
 
-      await expect(client.update("bd-1", { title: "Updated" })).rejects.toThrow("daemon connection")
+      await expect(client.update("bd-1", { title: "Updated" })).rejects.toThrow(
+        "writable beads connection",
+      )
 
       await client.disconnect()
     })
@@ -201,7 +251,7 @@ describe("BeadsClient", () => {
       const client = new BeadsClient()
       await client.connect(tempDir)
 
-      await expect(client.close("bd-1")).rejects.toThrow("daemon connection")
+      await expect(client.close("bd-1")).rejects.toThrow("writable beads connection")
 
       await client.disconnect()
     })
@@ -212,7 +262,7 @@ describe("BeadsClient", () => {
       await client.connect(tempDir)
 
       await expect(client.addDependency("bd-1", "bd-2", "blocks")).rejects.toThrow(
-        "daemon connection",
+        "writable beads connection",
       )
 
       await client.disconnect()

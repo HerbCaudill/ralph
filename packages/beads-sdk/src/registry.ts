@@ -60,7 +60,7 @@ export function isProcessRunning(
   }
 }
 
-/** Get available workspaces, filtering out those with dead daemon processes. */
+/** Get available legacy registry workspaces, filtering out entries with dead processes. */
 export function getAliveWorkspaces(
   /** Optional current workspace path to mark as active */
   currentPath?: string,
