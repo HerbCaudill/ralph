@@ -82,7 +82,7 @@ Claude outputs: `<start_task>{id}</start_task>` when starting, `<end_task>{id}</
 
 Two independent servers:
 
-- **beads-server** (port 4243) — Task management REST API + WebSocket for mutation events
+- **beads-server** (port 4243) — Task management REST API + WebSocket for task refresh events. With beads v1 it derives those WebSocket notifications from `BeadsClient` change polling rather than the removed daemon mutation stream.
 - **agent-server** (port 4244) — Generic agent chat server with adapters (Claude, Codex), session management (ChatSessionManager, SessionPersister), JSONL persistence, WebSocket streaming. Supports `customRoutes` in config for app-specific route injection. Does **not** contain worker orchestration — that lives in ralph-ui.
 
 Workspace discovery for `/api/workspaces` combines live Beads registry entries with local sibling repositories that contain `.beads`, using `WORKSPACE_PATH` as the filesystem anchor. Workspace ID resolution follows the same fallback so routes like `owner/repo` work for sibling workspaces even when the registry is empty.
@@ -213,6 +213,7 @@ The fix wraps the WebSocket constructor and handlers in a setTimeout, then clear
 - If push fails, resolve and retry until it succeeds
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
+
 ## Beads Issue Tracker
 
 This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
@@ -253,6 +254,7 @@ bd close <id>         # Complete work
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push

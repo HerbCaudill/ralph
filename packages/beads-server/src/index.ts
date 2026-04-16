@@ -5,18 +5,8 @@ import path from "node:path"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { WebSocketServer, type WebSocket, type RawData } from "ws"
-import {
-  batched,
-  MAX_CONCURRENT_REQUESTS,
-  type MutationEvent,
-  type Issue,
-} from "@herbcaudill/beads-sdk"
-import {
-  BeadsClient,
-  CliTransport,
-  DaemonTransport,
-  watchMutations,
-} from "@herbcaudill/beads-sdk/node"
+import { batched, ChangePoller, MAX_CONCURRENT_REQUESTS, type Issue } from "@herbcaudill/beads-sdk"
+import { CliTransport } from "@herbcaudill/beads-sdk/node"
 import { registerTaskRoutes } from "@herbcaudill/beads-view/server"
 import { resolveWorkspacePath } from "./resolveWorkspacePath.js"
 import { discoverWorkspaces } from "./discoverWorkspaces.js"
@@ -47,7 +37,7 @@ const execFileAsync = promisify(execFile)
 // Module state (no workspace state -- workspace is per-request)
 
 /** Cleanup function for the mutation watcher. */
-let stopMutationWatcher: (() => void) | null = null
+let stopMutationWatcher: (() => Promise<void>) | null = null
 
 /** Connected WebSocket clients. */
 const wsClients = new Set<WsClient>()
@@ -84,7 +74,7 @@ export async function readPeacockColor(workspacePath: string): Promise<string | 
   }
 }
 
-/** Create a BeadsClient for the given workspace path. */
+/** Create a beads client proxy for the given workspace path. */
 function getBeadsClient(workspace: string) {
   const resolved = resolveWorkspacePath(workspace)
   if (!resolved) {
@@ -287,35 +277,36 @@ function getBeadsClient(workspace: string) {
 
 // Mutation polling
 
-/** Start polling all alive workspaces for mutation events and broadcast them via WebSocket. */
-function startMutationPolling(interval: number = 1000): void {
+/** Start polling all discovered workspaces for changes and broadcast them via WebSocket. */
+async function startMutationPolling(interval: number = 1000): Promise<void> {
   if (stopMutationWatcher) {
-    stopMutationWatcher()
+    await stopMutationWatcher()
   }
 
-  // Poll all discovered workspaces
   const workspaces = discoverWorkspaces()
-  const cleanups: (() => void)[] = []
+  const cleanups = workspaces.map(ws => {
+    const transport = new CliTransport(ws.path, { actor: "beads-server" })
+    const poller = new ChangePoller(transport)
+    const unsubscribe = poller.onChange(() => {
+      broadcastToWorkspace(ws.path, {
+        type: "mutation:event",
+        event: { type: "changed" },
+        workspace: ws.path,
+        timestamp: Date.now(),
+      })
+    })
 
-  for (const ws of workspaces) {
-    const cleanup = watchMutations(
-      (event: MutationEvent) => {
-        broadcastToWorkspace(ws.path, {
-          type: "mutation:event",
-          event,
-          workspace: ws.path,
-          timestamp: Date.now(),
-        })
-      },
-      { workspacePath: ws.path, interval },
-    )
-    cleanups.push(cleanup)
-  }
+    poller.start(interval)
 
-  stopMutationWatcher = () => {
-    for (const cleanup of cleanups) {
-      cleanup()
+    return async () => {
+      unsubscribe()
+      poller.stop()
+      transport.close()
     }
+  })
+
+  stopMutationWatcher = async () => {
+    await Promise.all(cleanups.map(cleanup => cleanup()))
   }
 }
 
@@ -652,7 +643,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
   // Stop mutation polling
   if (stopMutationWatcher) {
-    stopMutationWatcher()
+    await stopMutationWatcher()
     stopMutationWatcher = null
   }
 
@@ -672,7 +663,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 export async function startServer(config: BeadsServerConfig): Promise<Server> {
   // Start mutation polling if enabled
   if (config.enableMutationPolling !== false) {
-    startMutationPolling(config.mutationPollingInterval)
+    await startMutationPolling(config.mutationPollingInterval)
   }
 
   const app = createApp(config)

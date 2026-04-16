@@ -3,10 +3,11 @@
  *
  * Checks if a Dolt server is reachable on the configured port (default 3307).
  * If not, spawns `dolt sql-server` as a detached background process using the
- * workspace's `.beads/dolt/` directory as its data dir.
+ * workspace's resolved beads Dolt data directory (`.beads/embeddeddolt/<repo>`
+ * in beads v1, `.beads/dolt/` in the legacy layout).
  */
 import { execFileSync, spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import net from "node:net"
@@ -48,14 +49,36 @@ function getDoltPort(workspacePath) {
   }
 }
 
+/** Resolve the Dolt data directory for either the legacy or embedded beads layout. */
+export async function findDoltDataDir(workspacePath) {
+  const embeddedRoot = path.join(workspacePath, ".beads", "embeddeddolt")
+  if (existsSync(embeddedRoot)) {
+    const workspaceDataDir = path.join(embeddedRoot, path.basename(workspacePath))
+    if (existsSync(workspaceDataDir)) {
+      return workspaceDataDir
+    }
+
+    const directories = readdirSync(embeddedRoot, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => path.join(embeddedRoot, entry.name))
+
+    if (directories.length === 1) {
+      return directories[0]
+    }
+  }
+
+  const legacyDataDir = path.join(workspacePath, ".beads", "dolt")
+  return existsSync(legacyDataDir) ? legacyDataDir : null
+}
+
 /**
  * Ensure the Dolt SQL server is running for the given workspace.
  * Starts it as a background process if not already running.
  */
 export async function ensureDoltServer(workspacePath) {
-  const doltDataDir = path.join(workspacePath, ".beads", "dolt")
-  if (!existsSync(doltDataDir)) {
-    console.log("   ⚠ no .beads/dolt/ directory found, skipping Dolt startup")
+  const doltDataDir = await findDoltDataDir(workspacePath)
+  if (!doltDataDir) {
+    console.log("   ⚠ no beads Dolt data directory found, skipping Dolt startup")
     return
   }
 
@@ -86,5 +109,7 @@ export async function ensureDoltServer(workspacePath) {
     await delay(POLL_INTERVAL_MS)
   }
 
-  throw new Error(`Dolt SQL server failed to start on port ${port} within ${STARTUP_TIMEOUT_MS / 1000}s`)
+  throw new Error(
+    `Dolt SQL server failed to start on port ${port} within ${STARTUP_TIMEOUT_MS / 1000}s`,
+  )
 }
