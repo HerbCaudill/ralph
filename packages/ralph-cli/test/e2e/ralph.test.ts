@@ -53,8 +53,8 @@ describe("Ralph E2E Tests", () => {
       })
 
       expect(result.exitCode).toBe(0)
-      expect(existsSync(join(workspacePath, ".ralph/prompt.prompt.md"))).toBe(true)
-      expect(existsSync(join(workspacePath, ".ralph/todo.md"))).toBe(true)
+      expect(existsSync(join(workspacePath, ".ralph/workflow.prompt.md"))).toBe(true)
+      expect(existsSync(join(workspacePath, ".claude/skills/manage-tasks/SKILL.md"))).toBe(true)
     })
 
     it("creates missing files in incomplete setup", async () => {
@@ -70,11 +70,10 @@ describe("Ralph E2E Tests", () => {
       })
 
       expect(result.exitCode).toBe(0)
-      // Should preserve existing prompt.md
-      const promptContent = readFileSync(join(workspacePath, ".ralph/prompt.prompt.md"), "utf-8")
-      expect(promptContent).toContain("only has prompt.md")
-      // Should create missing files
-      expect(existsSync(join(workspacePath, ".ralph/todo.md"))).toBe(true)
+      // Should create workflow.prompt.md
+      expect(existsSync(join(workspacePath, ".ralph/workflow.prompt.md"))).toBe(true)
+      // Should create skills
+      expect(existsSync(join(workspacePath, ".claude/skills/manage-tasks/SKILL.md"))).toBe(true)
     })
 
     it("does not overwrite existing complete setup", async () => {
@@ -82,7 +81,10 @@ describe("Ralph E2E Tests", () => {
       const workspacePath = join(TEST_WORKSPACE, "valid-test")
       cpSync(fixturePath, workspacePath, { recursive: true })
 
-      const originalPrompt = readFileSync(join(workspacePath, ".ralph/prompt.prompt.md"), "utf-8")
+      const originalWorkflow = readFileSync(
+        join(workspacePath, ".ralph/workflow.prompt.md"),
+        "utf-8",
+      )
 
       const result = await runRalph({
         args: ["init"],
@@ -92,8 +94,11 @@ describe("Ralph E2E Tests", () => {
       })
 
       expect(result.exitCode).toBe(0)
-      const currentPrompt = readFileSync(join(workspacePath, ".ralph/prompt.prompt.md"), "utf-8")
-      expect(currentPrompt).toBe(originalPrompt)
+      const currentWorkflow = readFileSync(
+        join(workspacePath, ".ralph/workflow.prompt.md"),
+        "utf-8",
+      )
+      expect(currentWorkflow).toBe(originalWorkflow)
     })
   })
 

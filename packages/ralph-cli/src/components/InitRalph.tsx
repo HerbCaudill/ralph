@@ -6,8 +6,8 @@ import { fileURLToPath } from "url"
 import { copyTemplates } from "../lib/copyTemplates.js"
 
 /**
- * Initializes Ralph by copying workflow templates and agent configurations to the project.
- * Creates .ralph/workflow.md, .claude/skills/, and .claude/agents/ directories with default files.
+ * Initializes Ralph by copying workflow templates and skill configurations to the project.
+ * Creates .ralph/workflow.prompt.md and .claude/skills/ directories with default files.
  * Session logs are stored in ~/.local/share/ralph/agent-sessions/ralph/.
  */
 export function InitRalph() {
@@ -23,7 +23,7 @@ export function InitRalph() {
     const claudeDir = join(process.cwd(), ".claude")
 
     // Check if already initialized
-    if (existsSync(join(ralphDir, "workflow.md"))) {
+    if (existsSync(join(ralphDir, "workflow.prompt.md"))) {
       setStatus("exists")
       return
     }
@@ -41,7 +41,7 @@ export function InitRalph() {
 
         // Copy workflow to .ralph/
         const ralphResult = copyTemplates(templatesDir, ralphDir, [
-          { src: "workflow.md", dest: "workflow.md" },
+          { src: "workflow.prompt.md", dest: "workflow.prompt.md" },
         ])
         allCreated.push(...ralphResult.created.map(f => `.ralph/${f}`))
         allSkipped.push(...ralphResult.skipped.map(f => `.ralph/${f}`))
@@ -54,16 +54,6 @@ export function InitRalph() {
         allCreated.push(...skillsResult.created.map(f => `.claude/${f}`))
         allSkipped.push(...skillsResult.skipped.map(f => `.claude/${f}`))
         allErrors.push(...skillsResult.errors)
-
-        // Copy agents to .claude/agents/
-        const agentsResult = copyTemplates(templatesDir, claudeDir, [
-          { src: "agents/make-tests.md", dest: "agents/make-tests.md" },
-          { src: "agents/write-docs.md", dest: "agents/write-docs.md" },
-          { src: "agents/run-tests.md", dest: "agents/run-tests.md" },
-        ])
-        allCreated.push(...agentsResult.created.map(f => `.claude/${f}`))
-        allSkipped.push(...agentsResult.skipped.map(f => `.claude/${f}`))
-        allErrors.push(...agentsResult.errors)
 
         setCreatedFiles(allCreated)
         setSkippedFiles(allSkipped)
@@ -90,7 +80,9 @@ export function InitRalph() {
     return (
       <Box flexDirection="column">
         <Text color="yellow">Ralph is already initialized</Text>
-        <Text dimColor>To reinitialize, remove the workflow first: rm .ralph/workflow.md</Text>
+        <Text dimColor>
+          To reinitialize, remove the workflow first: rm .ralph/workflow.prompt.md
+        </Text>
       </Box>
     )
   }
@@ -122,7 +114,7 @@ export function InitRalph() {
           <Text color="green">{"\n"}Ralph initialized successfully!</Text>
           <Text bold>{"\n"}Next steps:</Text>
           <Text>
-            <Text color="cyan"> 1. Edit .ralph/workflow.md</Text>
+            <Text color="cyan"> 1. Edit .ralph/workflow.prompt.md</Text>
             <Text dimColor> - Customize build commands for your project</Text>
           </Text>
           <Text>
