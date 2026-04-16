@@ -139,6 +139,42 @@ describe("ClaudeAdapter", () => {
       // Should NOT contain idle -- it went from running -> stopped
       expect(statuses).not.toContain("idle")
     })
+
+    it("extracts user-friendly message from Claude API JSON errors", async () => {
+      // This is the actual JSON error format returned by Claude API for 500 errors
+      const apiErrorJson = JSON.stringify({
+        type: "error",
+        error: { type: "api_error", message: "Internal server error" },
+        request_id: "req_011Ca5kifC6aGC1CRfMEF1AU",
+      })
+
+      const queryFn = async function* (_opts: unknown) {
+        throw new Error(apiErrorJson)
+      } as unknown as QueryFn
+
+      adapter = new ClaudeAdapter({
+        queryFn,
+        apiKey: "test-key",
+        retryConfig: { maxRetries: 0, initialDelayMs: 1, maxDelayMs: 1, backoffMultiplier: 1 },
+      })
+
+      const events = collectEvents(adapter)
+
+      // Listen for error events to prevent unhandled rejection
+      adapter.on("error", () => {})
+
+      await adapter.start({ cwd: "/tmp" })
+      adapter.send({ type: "user_message", content: "Hi" })
+
+      // Wait for the query to fail
+      await vi.waitFor(() => {
+        expect(events.some(e => e.type === "error")).toBe(true)
+      })
+
+      // The error event should have the user-friendly message, not the raw JSON
+      const errorEvent = events.find(e => e.type === "error") as { message?: string }
+      expect(errorEvent?.message).toBe("Internal server error")
+    })
   })
 
   describe("handleSDKMessage emits structured assistant event", () => {

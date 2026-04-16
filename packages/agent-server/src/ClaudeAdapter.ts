@@ -19,6 +19,7 @@ import type {
 import { isRetryableError } from "./lib/isRetryableError.js"
 import { calculateBackoffDelay } from "./lib/calculateBackoffDelay.js"
 import { loadClaudeMdSync } from "./lib/loadClaudeMd.js"
+import { extractApiErrorMessage } from "./lib/extractApiErrorMessage.js"
 
 export type QueryFn = typeof query
 
@@ -999,11 +1000,12 @@ export class ClaudeAdapter extends AgentAdapter {
       }
 
       case "error": {
-        // Error event
-        const message =
+        // Error event - extract user-friendly message from API errors
+        const rawMessage =
           typeof nativeEvent.error === "string" ? nativeEvent.error
           : typeof nativeEvent.message === "string" ? nativeEvent.message
           : "Unknown error"
+        const message = extractApiErrorMessage(rawMessage)
 
         const event: AgentErrorEvent = {
           type: "error",
@@ -1088,10 +1090,13 @@ export class ClaudeAdapter extends AgentAdapter {
   private handleProcessError(err: Error): void {
     this.setStatus("stopped")
 
+    // Extract user-friendly message from API errors (which may be JSON)
+    const userMessage = extractApiErrorMessage(err.message)
+
     const errorEvent: AgentErrorEvent = {
       type: "error",
       timestamp: this.now(),
-      message: err.message,
+      message: userMessage,
       fatal: true,
     }
     this.emit("event", errorEvent)

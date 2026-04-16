@@ -35,6 +35,16 @@ describe("isRetryableError", () => {
         expect(retryable(msg)).toBe(true)
       },
     )
+
+    it("returns true for Claude API JSON error with internal server error", () => {
+      // This is the actual error format returned by the Claude API
+      const apiError = JSON.stringify({
+        type: "error",
+        error: { type: "api_error", message: "Internal server error" },
+        request_id: "req_011Ca5kifC6aGC1CRfMEF1AU",
+      })
+      expect(retryable(apiError)).toBe(true)
+    })
   })
 
   it("returns true for overloaded error", () => {
