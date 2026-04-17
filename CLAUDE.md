@@ -17,8 +17,8 @@ pnpm build                # Build all packages
 pnpm --filter ralph-shared build  # Build shared (required after changes)
 pnpm typecheck            # Typecheck all packages
 
-pnpm test                 # Run all tests (CLI + UI)
-pnpm test:unit            # All unit tests
+pnpm test                 # Typecheck and run unit tests and playwright tests for all packages
+pnpm test:unit            # Run unit tests
 pnpm test:unit:{pkg}      # Unit tests for one package (e.g. test:unit:ui)
 pnpm test:pw              # Playwright with dynamic ports
 
@@ -69,7 +69,7 @@ pnpm workspace with these packages:
 All prompt templates live in `packages/ralph-shared/templates/` as the single source of truth. Templates can be imported as raw strings via Vite's `?raw` suffix:
 
 ```typescript
-import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/manage-tasks.prompt.md?raw"
+import MANAGE_TASKS_SYSTEM_PROMPT from "@herbcaudill/ralph-shared/templates/manage-tasks.prompt.md?raw";
 ```
 
 ### Contract with Claude CLI
