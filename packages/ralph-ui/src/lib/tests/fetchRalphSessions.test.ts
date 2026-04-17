@@ -328,4 +328,73 @@ describe("fetchRalphSessions", () => {
       fetchFn: mockFetch,
     })
   })
+
+  it("fetches missing task titles from the task API when not present in the local tasks list", async () => {
+    storage[STORAGE_KEY] = JSON.stringify({ "session-1": "r-abc123" })
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          sessions: [
+            {
+              sessionId: "session-1",
+              adapter: "claude",
+              createdAt: 1000,
+              lastMessageAt: 2000,
+              cwd: "/Users/herbcaudill/Code/HerbCaudill/ralph",
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          issue: { id: "r-abc123", title: "Recovered task title", status: "closed" },
+        }),
+      })
+
+    const result = await fetchRalphSessions({
+      fetchFn: mockFetch,
+      workspaceId: "herbcaudill/ralph",
+      tasks: [],
+    })
+
+    expect(mockFetch).toHaveBeenNthCalledWith(1, "/api/sessions?app=ralph")
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/tasks/r-abc123?workspace=herbcaudill%2Fralph",
+    )
+    expect(result[0].taskTitle).toBe("Recovered task title")
+  })
+
+  it("does not fetch a task title when it is already present in the local tasks list", async () => {
+    storage[STORAGE_KEY] = JSON.stringify({ "session-1": "r-abc123" })
+
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "session-1",
+            adapter: "claude",
+            createdAt: 1000,
+            lastMessageAt: 2000,
+            cwd: "/Users/herbcaudill/Code/HerbCaudill/ralph",
+          },
+        ],
+      }),
+    })
+
+    const result = await fetchRalphSessions({
+      fetchFn: mockFetch,
+      workspaceId: "herbcaudill/ralph",
+      tasks: [{ id: "r-abc123", title: "Cached title" }],
+    })
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(result[0].taskTitle).toBe("Cached title")
+  })
 })

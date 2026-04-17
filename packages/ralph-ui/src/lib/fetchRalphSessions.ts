@@ -88,6 +88,45 @@ export async function fetchRalphSessions(
       }),
     )
 
+    /** Build a task lookup URL, preserving workspace scoping when available. */
+    const getTaskUrl = (
+      /** The task identifier to fetch. */
+      taskId: string,
+    ): string => {
+      const query = workspaceId ? `?workspace=${encodeURIComponent(workspaceId)}` : ""
+      return `${baseUrl}/api/tasks/${taskId}${query}`
+    }
+
+    const missingTaskIds = Array.from(
+      new Set(
+        sessions
+          .map(session => getSessionTaskId(session.sessionId))
+          .filter((taskId): taskId is string => Boolean(taskId && !taskTitleMap.has(taskId))),
+      ),
+    )
+
+    const fetchedTaskTitles = new Map<string, string>()
+
+    await Promise.all(
+      missingTaskIds.map(async taskId => {
+        try {
+          const taskResponse = await fetchFn(getTaskUrl(taskId))
+          if (!taskResponse.ok) return
+
+          const taskData = (await taskResponse.json()) as {
+            ok?: boolean
+            issue?: { title?: string }
+          }
+          const title = taskData.issue?.title
+          if (taskData.ok && title) {
+            fetchedTaskTitles.set(taskId, title)
+          }
+        } catch {
+          // Ignore task title lookup failures and fall back to showing only the task ID.
+        }
+      }),
+    )
+
     // Transform to RalphSessionIndexEntry with resolved task IDs and titles
     const entries = sessions.map((session): RalphSessionIndexEntry => {
       const taskId = getSessionTaskId(session.sessionId)
@@ -103,12 +142,8 @@ export async function fetchRalphSessions(
         isActive: session.status === "processing",
       }
 
-      // Look up task title from local cache
       if (taskId) {
-        const title = taskTitleMap.get(taskId)
-        if (title) {
-          entry.taskTitle = title
-        }
+        entry.taskTitle = taskTitleMap.get(taskId) ?? fetchedTaskTitles.get(taskId)
       }
 
       return entry
