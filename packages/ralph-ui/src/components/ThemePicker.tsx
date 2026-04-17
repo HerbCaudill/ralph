@@ -98,7 +98,9 @@ export function ThemePicker({
                 data-testid={`theme-picker-item-${theme.id}`}
               >
                 <span className="flex-1 truncate">{theme.label}</span>
-                {activeThemeId === theme.id && <IconCheck className="size-3 text-primary" />}
+                {activeThemeId === theme.id && (
+                  <IconCheck className="size-3 text-accent-foreground" />
+                )}
               </button>
             ))}
           </div>
