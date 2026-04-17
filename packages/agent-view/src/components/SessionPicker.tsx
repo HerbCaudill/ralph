@@ -116,7 +116,7 @@ export function SessionPicker({
                   </span>
                 }
                 {isCurrentSession && (
-                  <IconCheck size={14} stroke={2} className="shrink-0 text-primary" />
+                  <IconCheck size={14} stroke={2} className="shrink-0 text-accent-foreground" />
                 )}
               </button>
             )

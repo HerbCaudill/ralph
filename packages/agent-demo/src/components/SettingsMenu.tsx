@@ -68,7 +68,7 @@ export function SettingsMenu({
               >
                 {icon}
                 <span className="flex-1 text-left">{label}</span>
-                {isActive && <IconCheck size={14} stroke={2} className="text-primary" />}
+                {isActive && <IconCheck size={14} stroke={2} className="text-accent-foreground" />}
               </button>
             )
           })}

@@ -45,7 +45,10 @@ function git(
 }
 
 describe("WorktreeManager", () => {
-  const testDir = join(realpathSync(tmpdir()), `test-worktrees-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const testDir = join(
+    realpathSync(tmpdir()),
+    `test-worktrees-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
   const mainWorkspacePath = join(testDir, "project")
   const worktreesPath = join(testDir, "project-worktrees")
   let manager: WorktreeManager

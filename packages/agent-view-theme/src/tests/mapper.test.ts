@@ -291,10 +291,44 @@ describe("mapThemeToCSSVariables", () => {
 
     const vars = mapThemeToCSSVariables(theme)
 
-    // Should derive primary-foreground based on dark theme
-    expect(vars["--primary-foreground"]).toBe("#1e1e1e")
+    // Should derive primary-foreground as white for dark themes (contrast on blue button)
+    expect(vars["--primary-foreground"]).toBe("#ffffff")
     // Should derive accent from primary
     expect(vars["--accent"]).toBe("#007acc")
+  })
+
+  it("should derive primary-foreground as dark for light themes", () => {
+    const theme: VSCodeTheme = {
+      name: "Light Test",
+      type: "light",
+      colors: {
+        "editor.background": "#ffffff",
+        "button.background": "#0066b8",
+      },
+      tokenColors: [],
+    }
+
+    const vars = mapThemeToCSSVariables(theme)
+
+    // Should derive primary-foreground as dark for light themes (contrast on blue button)
+    expect(vars["--primary-foreground"]).toBe("#1e1e1e")
+  })
+
+  it("should derive accent-foreground from primary-foreground", () => {
+    const theme: VSCodeTheme = {
+      name: "Light Test",
+      type: "light",
+      colors: {
+        "editor.background": "#ffffff",
+        "button.background": "#0066b8",
+      },
+      tokenColors: [],
+    }
+
+    const vars = mapThemeToCSSVariables(theme)
+
+    // accent-foreground should match primary-foreground
+    expect(vars["--accent-foreground"]).toBe(vars["--primary-foreground"])
   })
 })
 

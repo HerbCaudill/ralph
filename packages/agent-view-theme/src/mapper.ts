@@ -153,9 +153,11 @@ const CSS_VARIABLE_FALLBACKS: Record<keyof CSSVariables, FallbackChain> = {
   "--primary-foreground": {
     keys: ["button.foreground"],
     derive: (resolved, theme) => {
-      // If we have a primary color, derive foreground from theme type
+      // If we have a primary color, derive a contrasting foreground.
+      // Dark themes have saturated/bright buttons → white text.
+      // Light themes have saturated/dark buttons → dark text.
       if (resolved["--primary"]) {
-        return isDarkTheme(theme) ? "#1e1e1e" : "#ffffff"
+        return isDarkTheme(theme) ? "#ffffff" : "#1e1e1e"
       }
       return undefined
     },

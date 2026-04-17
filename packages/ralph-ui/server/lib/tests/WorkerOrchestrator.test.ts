@@ -100,7 +100,10 @@ function createMockRunAgent(options: {
 }
 
 describe("WorkerOrchestrator", () => {
-  const testDir = join(realpathSync(tmpdir()), `test-worker-orchestrator-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const testDir = join(
+    realpathSync(tmpdir()),
+    `test-worker-orchestrator-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
   const mainWorkspacePath = join(testDir, "project")
   let activeOrchestrator: WorkerOrchestrator | null = null
 
