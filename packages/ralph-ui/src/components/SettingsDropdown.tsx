@@ -102,7 +102,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
         <div
           className={cn(
             "absolute right-0 top-full z-50 mt-1 w-56 rounded-md border shadow-lg",
-            "bg-popover border-border",
+            "bg-popover text-popover-foreground border-border",
           )}
           data-testid="settings-dropdown"
         >
@@ -158,7 +158,9 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                   data-testid={`settings-theme-item-${theme.id}`}
                 >
                   <span className="flex-1 truncate">{theme.label}</span>
-                  {vscodeThemeId === theme.id && <IconCheck className="size-3 text-primary" />}
+                  {vscodeThemeId === theme.id && (
+                    <IconCheck className="size-3 text-accent-foreground" />
+                  )}
                 </button>
               ))}
             </div>

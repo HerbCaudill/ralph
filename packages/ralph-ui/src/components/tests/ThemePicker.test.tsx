@@ -157,6 +157,19 @@ describe("ThemePicker", () => {
       const draculaItem = screen.getByTestId("theme-picker-item-dracula")
       expect(draculaItem).toHaveClass("bg-accent/50")
     })
+
+    it("uses a readable color for the checkmark icon, not text-primary", () => {
+      render(<ThemePicker {...createDefaultProps({ activeThemeId: "dracula" })} />)
+
+      // Open dropdown
+      fireEvent.click(screen.getByTestId("theme-picker-trigger"))
+
+      // The checkmark should not use text-primary (white on white in light mode)
+      const draculaItem = screen.getByTestId("theme-picker-item-dracula")
+      const checkmark = draculaItem.querySelector("svg")
+      expect(checkmark).not.toBeNull()
+      expect(checkmark!.getAttribute("class")).not.toContain("text-primary")
+    })
   })
 
   describe("theme selection", () => {
