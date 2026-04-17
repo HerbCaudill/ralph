@@ -1,13 +1,13 @@
 /**
  * Ensure the Dolt SQL server is running for the beads database.
  *
- * Checks if a Dolt server is reachable on the configured port (default 3307).
+ * Checks if a Dolt server is reachable on the configured port.
  * If not, spawns `dolt sql-server` as a detached background process using the
- * workspace's resolved beads Dolt data directory (`.beads/embeddeddolt/<repo>`
- * in beads v1, `.beads/dolt/` in the legacy layout).
+ * workspace's resolved beads Dolt data directory, including the shared server
+ * directory at `~/.beads/shared-server/dolt` when the workspace is in server mode.
  */
 import { execFileSync, spawn } from "node:child_process"
-import { existsSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import net from "node:net"
@@ -49,8 +49,36 @@ function getDoltPort(workspacePath) {
   }
 }
 
-/** Resolve the Dolt data directory for either the legacy or embedded beads layout. */
-export async function findDoltDataDir(workspacePath) {
+/** Read the beads metadata file when present. */
+function readBeadsMetadata(workspacePath) {
+  const metadataPath = path.join(workspacePath, ".beads", "metadata.json")
+  if (!existsSync(metadataPath)) {
+    return null
+  }
+
+  try {
+    return JSON.parse(readFileSync(metadataPath, "utf8"))
+  } catch {
+    return null
+  }
+}
+
+/** Resolve the shared Dolt server data directory for server-mode workspaces. */
+function findSharedServerDoltDataDir(homePath) {
+  const sharedServerDoltDataDir = path.join(homePath, ".beads", "shared-server", "dolt")
+  return existsSync(sharedServerDoltDataDir) ? sharedServerDoltDataDir : null
+}
+
+/** Resolve the Dolt data directory for either the shared, legacy, or embedded beads layout. */
+export async function findDoltDataDir(workspacePath, homePath = process.env.HOME ?? "") {
+  const metadata = readBeadsMetadata(workspacePath)
+  if (metadata?.dolt_mode === "server") {
+    const sharedServerDoltDataDir = findSharedServerDoltDataDir(homePath)
+    if (sharedServerDoltDataDir) {
+      return sharedServerDoltDataDir
+    }
+  }
+
   const embeddedRoot = path.join(workspacePath, ".beads", "embeddeddolt")
   if (existsSync(embeddedRoot)) {
     const workspaceDataDir = path.join(embeddedRoot, path.basename(workspacePath))

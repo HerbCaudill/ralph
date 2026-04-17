@@ -98,6 +98,7 @@ pnpm build
 pnpm test
 
 # Start UI in development (combined server mode)
+# Assumes beads is using the shared Dolt server on 127.0.0.1:3308.
 pnpm dev
 
 # Start in split server mode (beads-server:4243 + agent-server:4244 + UI:5179)
@@ -136,20 +137,23 @@ In split mode, the UI automatically routes API requests and WebSocket connection
 
 ## Environment variables
 
-| Variable                | Description                                    | Required       |
-| ----------------------- | ---------------------------------------------- | -------------- |
-| `ANTHROPIC_API_KEY`     | API key for Claude                             | Yes for Claude |
-| `OPENAI_API_KEY`        | API key for Codex                              | Optional       |
-| `WORKSPACE_PATH`        | Workspace directory (default: repo root)       | No             |
-| `HOST`                  | Server bind address (default: 127.0.0.1)       | No             |
-| `PORT`                  | Server port (default: 4242)                    | No             |
-| `BEADS_PORT`            | Beads server port (default: 4243)              | No             |
-| `AGENT_SERVER_HOST`     | Agent server bind address (default: localhost) | No             |
-| `AGENT_SERVER_PORT`     | Agent server port (default: 4244)              | No             |
-| `VITE_SPLIT_SERVERS`    | Enable split-server mode in the UI             | No             |
-| `CLAUDE_MODEL`          | Default Claude model for ClaudeAdapter         | No             |
-| `VITE_BEADS_SERVER_URL` | Explicit beads-server URL in split mode        | No             |
-| `VITE_AGENT_SERVER_URL` | Explicit agent-server URL in split mode        | No             |
+| Variable                   | Description                                    | Required       |
+| -------------------------- | ---------------------------------------------- | -------------- |
+| `ANTHROPIC_API_KEY`        | API key for Claude                             | Yes for Claude |
+| `OPENAI_API_KEY`           | API key for Codex                              | Optional       |
+| `WORKSPACE_PATH`           | Workspace directory (default: repo root)       | No             |
+| `HOST`                     | Server bind address (default: 127.0.0.1)       | No             |
+| `PORT`                     | Server port (default: 4242)                    | No             |
+| `BEADS_PORT`               | Beads server port (default: 4243)              | No             |
+| `BEADS_DOLT_SERVER_MODE`   | Use Beads in Dolt server mode                  | No             |
+| `BEADS_DOLT_SHARED_SERVER` | Use the machine-wide shared Dolt server        | No             |
+| `BEADS_DOLT_SERVER_PORT`   | Shared Dolt server port (default: 3308)        | No             |
+| `AGENT_SERVER_HOST`        | Agent server bind address (default: localhost) | No             |
+| `AGENT_SERVER_PORT`        | Agent server port (default: 4244)              | No             |
+| `VITE_SPLIT_SERVERS`       | Enable split-server mode in the UI             | No             |
+| `CLAUDE_MODEL`             | Default Claude model for ClaudeAdapter         | No             |
+| `VITE_BEADS_SERVER_URL`    | Explicit beads-server URL in split mode        | No             |
+| `VITE_AGENT_SERVER_URL`    | Explicit agent-server URL in split mode        | No             |
 
 ## License
 

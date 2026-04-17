@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { mkdtemp, mkdir, rm } from "node:fs/promises"
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { findDoltDataDir } from "./ensureDoltServer.js"
@@ -25,12 +25,30 @@ describe("findDoltDataDir", () => {
     )
   })
 
+  it("returns the shared server dolt directory for server-mode workspaces", async () => {
+    const workspacePath = await mkdtemp(join(tmpdir(), "ensure-dolt-shared-"))
+    const homePath = await mkdtemp(join(tmpdir(), "ensure-dolt-home-"))
+    tempDirs.push(workspacePath, homePath)
+    await mkdir(join(workspacePath, ".beads"), { recursive: true })
+    await mkdir(join(homePath, ".beads", "shared-server", "dolt"), { recursive: true })
+    await writeFile(
+      join(workspacePath, ".beads", "metadata.json"),
+      JSON.stringify({ backend: "dolt", dolt_mode: "server", dolt_database: "workspace" }),
+    )
+
+    await expect(findDoltDataDir(workspacePath, homePath)).resolves.toBe(
+      join(homePath, ".beads", "shared-server", "dolt"),
+    )
+  })
+
   it("falls back to the legacy .beads/dolt directory when present", async () => {
     const workspacePath = await mkdtemp(join(tmpdir(), "ensure-dolt-legacy-"))
     tempDirs.push(workspacePath)
     await mkdir(join(workspacePath, ".beads", "dolt"), { recursive: true })
 
-    await expect(findDoltDataDir(workspacePath)).resolves.toBe(join(workspacePath, ".beads", "dolt"))
+    await expect(findDoltDataDir(workspacePath)).resolves.toBe(
+      join(workspacePath, ".beads", "dolt"),
+    )
   })
 
   it("returns null when no dolt data directory exists", async () => {
