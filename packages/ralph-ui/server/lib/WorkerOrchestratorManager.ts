@@ -9,6 +9,7 @@ import {
 import { type RunAgentResult } from "./WorkerLoop.js"
 import { type ChatSessionManager, findAnyIncompleteSession } from "@herbcaudill/agent-server"
 import { getWorkspaceId } from "@herbcaudill/beads-sdk"
+import { parsePromiseCompleteEvent } from "@herbcaudill/ralph-shared"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
 
 /**
@@ -230,7 +231,11 @@ export class WorkerOrchestratorManager extends EventEmitter {
       // Wait for session to complete
       await this.waitForSessionCompletion(sessionId)
 
-      return { exitCode: 0, sessionId }
+      return {
+        exitCode: 0,
+        sessionId,
+        noWorkFound: await this.didSessionFinishWithoutWork(sessionId),
+      }
     }
 
     // No incomplete session found - create a new one
@@ -258,7 +263,29 @@ export class WorkerOrchestratorManager extends EventEmitter {
     // Wait for session to complete (status becomes idle or stopped)
     await this.waitForSessionCompletion(sessionId)
 
-    return { exitCode: 0, sessionId }
+    return {
+      exitCode: 0,
+      sessionId,
+      noWorkFound: await this.didSessionFinishWithoutWork(sessionId),
+    }
+  }
+
+  /** Detect whether a session ended with a no-work COMPLETE marker. */
+  private async didSessionFinishWithoutWork(sessionId: string): Promise<boolean> {
+    if (!this.sessionManager) {
+      return false
+    }
+
+    const events = await this.sessionManager
+      .getPersister()
+      .readEvents(sessionId, this.app, this.workspaceId)
+
+    return events.some(event => {
+      const text = extractTextFromEvent(event)
+      return text ?
+          parsePromiseCompleteEvent(text, event.timestamp as number | undefined) !== null
+        : false
+    })
   }
 
   /**
@@ -439,4 +466,31 @@ export class WorkerOrchestratorManager extends EventEmitter {
   getWorkerState(workerName: string): "idle" | "running" | "paused" | null {
     return this.orchestrator.getWorkerState(workerName)
   }
+}
+
+/** Extract plain text content from a persisted session event. */
+function extractTextFromEvent(event: Record<string, unknown>): string | null {
+  if (event.type === "assistant" && event.message) {
+    const message = event.message as Record<string, unknown>
+    const content = message.content
+
+    if (Array.isArray(content)) {
+      const texts = content.flatMap(block => {
+        if (typeof block !== "object" || block === null) {
+          return []
+        }
+
+        const text = (block as Record<string, unknown>).text
+        return typeof text === "string" ? [text] : []
+      })
+
+      return texts.join("\n") || null
+    }
+  }
+
+  if (event.type === "user_message" && typeof event.message === "string") {
+    return event.message
+  }
+
+  return null
 }

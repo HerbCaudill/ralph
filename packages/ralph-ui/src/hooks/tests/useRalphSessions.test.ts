@@ -58,16 +58,22 @@ describe("useRalphSessions", () => {
 
   describe("initial state", () => {
     it("should return empty sessions array initially", () => {
+      mockFetchRalphSessions.mockReturnValue(new Promise(() => {}))
+
       const { result } = renderHook(() => useRalphSessions(null))
       expect(result.current.sessions).toEqual([])
     })
 
     it("should return null for historicalEvents initially", () => {
+      mockFetchRalphSessions.mockReturnValue(new Promise(() => {}))
+
       const { result } = renderHook(() => useRalphSessions(null))
       expect(result.current.historicalEvents).toBeNull()
     })
 
     it("should return isViewingHistorical as false initially", () => {
+      mockFetchRalphSessions.mockReturnValue(new Promise(() => {}))
+
       const { result } = renderHook(() => useRalphSessions(null))
       expect(result.current.isViewingHistorical).toBe(false)
     })

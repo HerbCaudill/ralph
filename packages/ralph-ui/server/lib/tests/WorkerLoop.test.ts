@@ -52,8 +52,9 @@ function git(
 function createMockRunAgent(options?: {
   exitCode?: number
   sessionId?: string
+  noWorkFound?: boolean
   doWork?: (cwd: string) => Promise<void>
-}): (cwd: string) => Promise<{ exitCode: number; sessionId: string }> {
+}): (cwd: string) => Promise<{ exitCode: number; sessionId: string; noWorkFound?: boolean }> {
   return async cwd => {
     if (options?.doWork) {
       await options.doWork(cwd)
@@ -61,12 +62,16 @@ function createMockRunAgent(options?: {
     return {
       exitCode: options?.exitCode ?? 0,
       sessionId: options?.sessionId ?? "test-session-" + Math.random().toString(36).slice(2),
+      noWorkFound: options?.noWorkFound,
     }
   }
 }
 
 describe("WorkerLoop", () => {
-  const testDir = join(realpathSync(tmpdir()), `test-worker-loop-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  const testDir = join(
+    realpathSync(tmpdir()),
+    `test-worker-loop-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  )
   const mainWorkspacePath = join(testDir, "project")
   let worktreeManager: WorktreeManager
 
@@ -336,6 +341,26 @@ describe("WorkerLoop", () => {
 
       // Should have run at least once before stopping
       expect(runCount).toBeGreaterThanOrEqual(1)
+    })
+
+    it("stops after a session reports that no work remains", async () => {
+      let runCount = 0
+
+      const loop = new WorkerLoop({
+        workerName: "homer",
+        mainWorkspacePath,
+        runAgent: createMockRunAgent({
+          noWorkFound: true,
+          doWork: async () => {
+            runCount++
+          },
+        }),
+      })
+
+      await loop.runLoop()
+
+      expect(runCount).toBe(1)
+      expect(loop.getState()).toBe("idle")
     })
   })
 

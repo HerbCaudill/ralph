@@ -174,6 +174,12 @@ vi.mock("../../hooks/useTaskChat", () => ({
   }),
 }))
 
+vi.mock("../../hooks/useTaskChatSessions", () => ({
+  useTaskChatSessions: () => ({
+    sessions: [],
+  }),
+}))
+
 vi.mock("../../hooks/useAccentColor", () => ({
   useAccentColor: vi.fn(),
 }))
