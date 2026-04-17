@@ -8,6 +8,7 @@ import {
 } from "./WorkerOrchestrator.js"
 import { type RunAgentResult } from "./WorkerLoop.js"
 import { type ChatSessionManager, findAnyIncompleteSession } from "@herbcaudill/agent-server"
+import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { loadSessionPrompt, TEMPLATES_DIR } from "@herbcaudill/ralph-shared/prompts"
 
 /**
@@ -91,6 +92,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
   private taskSource: TaskSource
   private mainWorkspacePath: string
   private app: string
+  private workspaceId: string
   private runTestsEnabled: boolean
   private sessionManager?: ChatSessionManager
   private customRunAgent?: (cwd: string) => Promise<RunAgentResult>
@@ -101,6 +103,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
     this.mainWorkspacePath = options.mainWorkspacePath
     this.taskSource = options.taskSource
     this.app = options.app ?? "ralph"
+    this.workspaceId = getWorkspaceId({ workspacePath: this.mainWorkspacePath })
     this.runTestsEnabled = options.runTests ?? false
     this.sessionManager = options.sessionManager
     this.customRunAgent = options.runAgent
@@ -204,7 +207,7 @@ export class WorkerOrchestratorManager extends EventEmitter {
 
     // Check for incomplete sessions to resume
     const persister = this.sessionManager.getPersister()
-    const incompleteSession = await findAnyIncompleteSession(persister, workerName)
+    const incompleteSession = await findAnyIncompleteSession(persister, this.app, this.workspaceId)
 
     if (incompleteSession) {
       // Resume the incomplete session
@@ -233,8 +236,8 @@ export class WorkerOrchestratorManager extends EventEmitter {
     // No incomplete session found - create a new one
     const result = await this.sessionManager.createSession({
       cwd,
-      app: workerName,
-      workspace: null, // Don't derive workspace from worktree path
+      app: this.app,
+      workspace: this.workspaceId,
     })
     const sessionId = result.sessionId
 

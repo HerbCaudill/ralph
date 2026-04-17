@@ -36,7 +36,7 @@ describe("fetchRalphSessions", () => {
     vi.unstubAllGlobals()
   })
 
-  it("fetches sessions without include=summary", async () => {
+  it("fetches all sessions without include=summary", async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({ sessions: [] }),
@@ -44,7 +44,7 @@ describe("fetchRalphSessions", () => {
 
     await fetchRalphSessions({ fetchFn: mockFetch })
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/sessions?app=ralph")
+    expect(mockFetch).toHaveBeenCalledWith("/api/sessions")
   })
 
   it("uses cached taskId from localStorage without fetching events", async () => {
@@ -256,7 +256,7 @@ describe("fetchRalphSessions", () => {
       baseUrl: "http://localhost:4244",
     })
 
-    expect(mockFetch).toHaveBeenCalledWith("http://localhost:4244/api/sessions?app=ralph")
+    expect(mockFetch).toHaveBeenCalledWith("http://localhost:4244/api/sessions")
   })
 
   it("sorts sessions by lastMessageAt descending", async () => {
@@ -362,7 +362,7 @@ describe("fetchRalphSessions", () => {
       tasks: [],
     })
 
-    expect(mockFetch).toHaveBeenNthCalledWith(1, "/api/sessions?app=ralph")
+    expect(mockFetch).toHaveBeenNthCalledWith(1, "/api/sessions")
     expect(mockFetch).toHaveBeenNthCalledWith(
       2,
       "/api/tasks/r-abc123?workspace=herbcaudill%2Fralph",
@@ -396,5 +396,94 @@ describe("fetchRalphSessions", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
     expect(result[0].taskTitle).toBe("Cached title")
+  })
+
+  it("includes worker sessions for the current workspace and excludes task chat sessions", async () => {
+    storage[STORAGE_KEY] = JSON.stringify({
+      "worker-session": "r-worker",
+      "task-chat-session": "r-chat",
+    })
+
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "worker-session",
+            adapter: "claude",
+            app: "homer",
+            createdAt: 3000,
+            lastMessageAt: 4000,
+            cwd: "/Users/herbcaudill/Code/HerbCaudill/.ralph-worktrees/homer/bd-123",
+          },
+          {
+            sessionId: "task-chat-session",
+            adapter: "claude",
+            app: "task-chat",
+            createdAt: 2000,
+            lastMessageAt: 2500,
+            cwd: "/Users/herbcaudill/Code/HerbCaudill/ralph",
+          },
+        ],
+      }),
+    })
+
+    const result = await fetchRalphSessions({
+      fetchFn: mockFetch,
+      workspaceId: "herbcaudill/ralph",
+      tasks: [{ id: "r-worker", title: "Worker task" }],
+    })
+
+    expect(result).toEqual([
+      {
+        sessionId: "worker-session",
+        adapter: "claude",
+        firstMessageAt: 3000,
+        lastMessageAt: 4000,
+        firstUserMessage: "r-worker",
+        taskId: "r-worker",
+        taskTitle: "Worker task",
+        isActive: false,
+      },
+    ])
+  })
+
+  it("matches worker worktree sessions even when the local parent directory differs from the repo owner", async () => {
+    storage[STORAGE_KEY] = JSON.stringify({ "worker-session": "r-worker" })
+
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sessions: [
+          {
+            sessionId: "worker-session",
+            adapter: "claude",
+            app: "homer",
+            createdAt: 3000,
+            lastMessageAt: 4000,
+            cwd: "/Users/herbcaudill/Code/client-work/.widgets-worktrees/homer/bd-123",
+          },
+        ],
+      }),
+    })
+
+    const result = await fetchRalphSessions({
+      fetchFn: mockFetch,
+      workspaceId: "acme/widgets",
+      tasks: [{ id: "r-worker", title: "Worker task" }],
+    })
+
+    expect(result).toEqual([
+      {
+        sessionId: "worker-session",
+        adapter: "claude",
+        firstMessageAt: 3000,
+        lastMessageAt: 4000,
+        firstUserMessage: "r-worker",
+        taskId: "r-worker",
+        taskTitle: "Worker task",
+        isActive: false,
+      },
+    ])
   })
 })

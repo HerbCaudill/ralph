@@ -6,7 +6,11 @@ import type {
   CreateSessionOptions,
   SessionInfo,
 } from "@herbcaudill/agent-server"
+import { SessionPersister } from "@herbcaudill/ralph-shared/server"
 import { EventEmitter } from "node:events"
+import { mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 /**
  * Create a mock ChatSessionManager for testing.
@@ -17,10 +21,13 @@ function createMockSessionManager(): {
   createSession: MockInstance<[options?: CreateSessionOptions], Promise<{ sessionId: string }>>
   sendMessage: MockInstance<[string, string, object?], Promise<void>>
   getSessionInfo: MockInstance<[string], SessionInfo | null>
+  getPersister: MockInstance<[], SessionPersister>
   sessions: Map<string, SessionInfo>
+  persister: SessionPersister
 } {
   const sessions = new Map<string, SessionInfo>()
   const emitter = new EventEmitter()
+  const persister = new SessionPersister(mkdtempSync(join(tmpdir(), "worker-orchestrator-test-")))
   let sessionCounter = 0
 
   const createSession = vi.fn<[options?: CreateSessionOptions], Promise<{ sessionId: string }>>(
@@ -57,16 +64,27 @@ function createMockSessionManager(): {
     return sessions.get(sessionId) ?? null
   })
 
+  const getPersister = vi.fn<[], SessionPersister>(() => persister)
+
   const mockManager = {
     createSession,
     sendMessage,
     getSessionInfo,
+    getPersister,
     on: emitter.on.bind(emitter),
     off: emitter.off.bind(emitter),
     emit: emitter.emit.bind(emitter),
   } as unknown as ChatSessionManager
 
-  return { mockManager, createSession, sendMessage, getSessionInfo, sessions }
+  return {
+    mockManager,
+    createSession,
+    sendMessage,
+    getSessionInfo,
+    getPersister,
+    sessions,
+    persister,
+  }
 }
 
 /**
@@ -333,6 +351,24 @@ describe("WorkerOrchestratorManager", () => {
       expect(manager).toBeDefined()
 
       await manager.stop()
+    })
+
+    it("stores worker sessions under the ralph app in the main workspace namespace", async () => {
+      const { mockManager, createSession } = createMockSessionManager()
+
+      const manager = new WorkerOrchestratorManager({
+        mainWorkspacePath: "/tmp/acme/widgets",
+        taskSource: mockTaskSource,
+        sessionManager: mockManager,
+      })
+
+      await (manager as any).runAgentSession("/tmp/.widgets-worktrees/homer/r-123")
+
+      expect(createSession).toHaveBeenCalledWith({
+        cwd: "/tmp/.widgets-worktrees/homer/r-123",
+        app: "ralph",
+        workspace: "acme/widgets",
+      })
     })
   })
 })

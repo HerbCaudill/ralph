@@ -534,6 +534,62 @@ describe("findAnyIncompleteSession", () => {
     expect(result!.app).toBe("ralph")
   })
 
+  it("ignores incomplete sessions from other workspaces when a workspace is provided", async () => {
+    await persister.appendEvent(
+      "other-workspace-session",
+      {
+        type: "session_created",
+        sessionId: "other-workspace-session",
+        adapter: "claude",
+        timestamp: Date.now(),
+      },
+      "ralph",
+      "other/repo",
+    )
+    await persister.appendEvent(
+      "other-workspace-session",
+      {
+        type: "assistant",
+        message: {
+          content: [{ type: "text", text: "<start_task>r-other</start_task>" }],
+        },
+        timestamp: Date.now(),
+      },
+      "ralph",
+      "other/repo",
+    )
+
+    await persister.appendEvent(
+      "target-workspace-session",
+      {
+        type: "session_created",
+        sessionId: "target-workspace-session",
+        adapter: "claude",
+        timestamp: Date.now(),
+      },
+      "ralph",
+      "owner/repo",
+    )
+    await persister.appendEvent(
+      "target-workspace-session",
+      {
+        type: "assistant",
+        message: {
+          content: [{ type: "text", text: "<start_task>r-target</start_task>" }],
+        },
+        timestamp: Date.now(),
+      },
+      "ralph",
+      "owner/repo",
+    )
+
+    const result = await findAnyIncompleteSession(persister, "ralph", "owner/repo")
+    expect(result).not.toBeNull()
+    expect(result!.sessionId).toBe("target-workspace-session")
+    expect(result!.taskId).toBe("r-target")
+    expect(result!.workspace).toBe("owner/repo")
+  })
+
   it("ignores sessions from other apps", async () => {
     // Create incomplete session in different app
     await persister.appendEvent(

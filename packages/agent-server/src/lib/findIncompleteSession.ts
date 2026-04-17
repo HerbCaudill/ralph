@@ -24,14 +24,16 @@ export interface IncompleteSessionResult {
  *
  * @param persister - SessionPersister instance for reading session files
  * @param app - The app namespace to search in (e.g., "ralph")
+ * @param workspace - Optional workspace identifier to scope the search to
  * @returns The sessionId and taskId of an incomplete session, or null if none found
  */
 export async function findAnyIncompleteSession(
   persister: SessionPersister,
   app: string,
+  workspace?: string,
 ): Promise<IncompleteSessionResult | null> {
-  // Get all sessions for this app (across all workspaces)
-  const sessions = persister.listSessionsWithApp(app)
+  // Get all sessions for this app, optionally scoped to a workspace
+  const sessions = persister.listSessionsWithApp(app, workspace)
 
   for (const { sessionId, app: sessionApp, workspace } of sessions) {
     const events = await persister.readEvents(sessionId, sessionApp, workspace)

@@ -11,18 +11,25 @@ export interface RalphSessionIndexEntry extends SessionIndexEntry {
   taskTitle?: string
 }
 
-/** Response from GET /api/sessions?app=ralph. */
+/** Session metadata returned by GET /api/sessions. */
+interface SessionSummary {
+  sessionId: string
+  adapter: string
+  createdAt: number
+  lastMessageAt?: number
+  /** Working directory this session was created in. */
+  cwd?: string
+  /** App namespace for the session (for example `task-chat` or a worker name). */
+  app?: string
+  /** Workspace identifier when the server knows it. */
+  workspace?: string
+  /** Session status: "idle" | "processing" | "error". */
+  status?: string
+}
+
+/** Response from GET /api/sessions. */
 interface SessionsResponse {
-  sessions: Array<{
-    sessionId: string
-    adapter: string
-    createdAt: number
-    lastMessageAt?: number
-    /** Working directory this session was created in. */
-    cwd?: string
-    /** Session status: "idle" | "processing" | "error". */
-    status?: string
-  }>
+  sessions: SessionSummary[]
 }
 
 /** Minimal task shape needed for title lookup. */
@@ -31,6 +38,44 @@ interface TaskLike {
   id: string
   /** Task title. */
   title: string
+}
+
+/** Check whether a session belongs to the current Ralph workspace. */
+function isSessionInWorkspace(
+  /** The session metadata from the server. */
+  session: SessionSummary,
+  /** The current workspace identifier. */
+  workspaceId?: string,
+): boolean {
+  if (!workspaceId) return true
+
+  const normalizedWorkspaceId = workspaceId.toLowerCase()
+
+  if (session.workspace?.toLowerCase() === normalizedWorkspaceId) {
+    return true
+  }
+
+  if (!session.cwd) {
+    return false
+  }
+
+  if (getWorkspaceId({ workspacePath: session.cwd }) === normalizedWorkspaceId) {
+    return true
+  }
+
+  const segments = session.cwd.split("/").filter(Boolean)
+  const [, expectedRepo] = normalizedWorkspaceId.split("/")
+  const worktreesDir = `.${expectedRepo}-worktrees`
+
+  return segments.includes(worktreesDir)
+}
+
+/** Check whether a session should appear in Ralph's session picker. */
+function isRalphSession(
+  /** The session metadata from the server. */
+  session: SessionSummary,
+): boolean {
+  return session.app !== "task-chat"
 }
 
 /** Options for fetchRalphSessions. */
@@ -60,7 +105,7 @@ export async function fetchRalphSessions(
   const taskTitleMap = new Map(tasks.map(t => [t.id, t.title]))
 
   try {
-    const response = await fetchFn(`${baseUrl}/api/sessions?app=ralph`)
+    const response = await fetchFn(`${baseUrl}/api/sessions`)
     if (!response.ok) {
       return []
     }
@@ -68,11 +113,10 @@ export async function fetchRalphSessions(
     const data = (await response.json()) as SessionsResponse
     const allSessions = data.sessions ?? []
 
-    // Filter to sessions matching the current workspace
-    const sessions =
-      workspaceId ?
-        allSessions.filter(s => s.cwd && getWorkspaceId({ workspacePath: s.cwd }) === workspaceId)
-      : allSessions
+    // Filter to Ralph sessions for the current workspace, including worker worktrees.
+    const sessions = allSessions.filter(session => {
+      return isRalphSession(session) && isSessionInWorkspace(session, workspaceId)
+    })
 
     // Resolve task IDs: check localStorage cache first, fetch events for uncached sessions
     const uncachedSessions = sessions.filter(s => !getSessionTaskId(s.sessionId))
