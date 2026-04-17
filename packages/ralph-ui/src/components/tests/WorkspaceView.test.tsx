@@ -551,113 +551,24 @@ describe("WorkspaceView worker orchestrator integration", () => {
     mockIsViewingHistorical = false
   })
 
-  describe("WorkerControlBar rendering", () => {
-    it("does not render WorkerControlBar when there are no active workers", () => {
+  describe("worker session UI", () => {
+    it("does not render the worker control bar when there are no active workers", () => {
       mockOrchestratorWorkers = {}
       renderWorkspaceView()
+
       expect(screen.queryByTestId("worker-control-bar")).not.toBeInTheDocument()
+      expect(capturedWorkerControlBarProps).toBeNull()
     })
 
-    it("renders WorkerControlBar when there are active workers", () => {
-      mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
-      }
-      renderWorkspaceView()
-      expect(screen.getByTestId("worker-control-bar")).toBeInTheDocument()
-    })
-
-    it("passes workers array to WorkerControlBar", () => {
+    it("does not render the worker control bar when there are active workers", () => {
       mockOrchestratorWorkers = {
         Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
         Homer: { workerName: "Homer", state: "paused", currentWorkId: "r-def456" },
       }
       renderWorkspaceView()
 
-      const workers = capturedWorkerControlBarProps?.workers as WorkerInfo[]
-      expect(workers).toHaveLength(2)
-      expect(workers).toContainEqual({
-        workerName: "Ralph",
-        state: "running",
-        currentWorkId: "r-abc123",
-      })
-      expect(workers).toContainEqual({
-        workerName: "Homer",
-        state: "paused",
-        currentWorkId: "r-def456",
-      })
-    })
-
-    it("passes isStoppingAfterCurrent when orchestrator is stopping", () => {
-      mockOrchestratorState = "stopping"
-      mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
-      }
-      renderWorkspaceView()
-
-      expect(capturedWorkerControlBarProps?.isStoppingAfterCurrent).toBe(true)
-    })
-
-    it("passes isConnected to WorkerControlBar", () => {
-      mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
-      }
-      renderWorkspaceView()
-
-      expect(capturedWorkerControlBarProps?.isConnected).toBe(true)
-    })
-  })
-
-  describe("WorkerControlBar callbacks", () => {
-    beforeEach(() => {
-      beadsMocks.selectedTaskId = null
-      mockOrchestratorWorkers = {
-        Ralph: { workerName: "Ralph", state: "running", currentWorkId: "r-abc123" },
-      }
-    })
-
-    it("passes onPauseWorker callback", () => {
-      renderWorkspaceView()
-
-      const handler = capturedWorkerControlBarProps?.onPauseWorker as (name: string) => void
-      handler("Ralph")
-
-      expect(mockPauseWorker).toHaveBeenCalledWith("Ralph")
-    })
-
-    it("passes onResumeWorker callback", () => {
-      renderWorkspaceView()
-
-      const handler = capturedWorkerControlBarProps?.onResumeWorker as (name: string) => void
-      handler("Ralph")
-
-      expect(mockResumeWorker).toHaveBeenCalledWith("Ralph")
-    })
-
-    it("passes onStopWorker callback", () => {
-      renderWorkspaceView()
-
-      const handler = capturedWorkerControlBarProps?.onStopWorker as (name: string) => void
-      handler("Ralph")
-
-      expect(mockStopWorker).toHaveBeenCalledWith("Ralph")
-    })
-
-    it("passes onStopAfterCurrent callback", () => {
-      renderWorkspaceView()
-
-      const handler = capturedWorkerControlBarProps?.onStopAfterCurrent as () => void
-      handler()
-
-      expect(mockOrchestratorStopAfterCurrent).toHaveBeenCalled()
-    })
-
-    it("passes onCancelStopAfterCurrent callback", () => {
-      renderWorkspaceView()
-
-      const handler = capturedWorkerControlBarProps?.onCancelStopAfterCurrent as () => void
-      handler()
-
-      expect(mockOrchestratorCancelStop).toHaveBeenCalled()
+      expect(screen.queryByTestId("worker-control-bar")).not.toBeInTheDocument()
+      expect(capturedWorkerControlBarProps).toBeNull()
     })
   })
 

@@ -42,7 +42,6 @@ import { getWorkspaceId } from "@herbcaudill/beads-sdk"
 import { useWorkerName } from "@/hooks/useWorkerName"
 import { useWorkerOrchestrator } from "@/hooks/useWorkerOrchestrator"
 import { createRalphEventRenderers } from "@/lib/createRalphEventRenderers"
-import { WorkerControlBar } from "@/components/WorkerControlBar"
 
 /**
  * Workspace view — renders the main Ralph UI for a specific workspace.
@@ -520,17 +519,6 @@ export function WorkspaceView() {
           />
         }
       >
-        {/* Worker control bar for parallel worker orchestration */}
-        <WorkerControlBar
-          workers={Object.values(orchestrator.workers)}
-          isStoppingAfterCurrent={orchestrator.state === "stopping"}
-          isConnected={orchestrator.isConnected}
-          onPauseWorker={orchestrator.pauseWorker}
-          onResumeWorker={orchestrator.resumeWorker}
-          onStopWorker={orchestrator.stopWorker}
-          onStopAfterCurrent={orchestrator.stopAfterCurrent}
-          onCancelStopAfterCurrent={orchestrator.cancelStopAfterCurrent}
-        />
         <TaskPanelController
           searchInputRef={searchInputRef}
           onTaskClick={handleTaskClick}
