@@ -321,6 +321,64 @@ describe("RalphRunner", () => {
     })
   })
 
+  describe("header Start button for historical idle sessions", () => {
+    it("shows Start button in header when idle and viewing historical session", () => {
+      render(
+        <RalphRunner {...defaultProps} controlState="idle" isViewingHistoricalSession={true} />,
+      )
+      const header = screen.getByTestId("agent-view-header")
+      const startButton = header.querySelector("button[aria-label='Start Ralph']")
+      expect(startButton).toBeInTheDocument()
+    })
+
+    it("calls onStart when header Start button is clicked", () => {
+      render(
+        <RalphRunner
+          {...defaultProps}
+          controlState="idle"
+          isViewingHistoricalSession={true}
+          connectionStatus="connected"
+        />,
+      )
+      const header = screen.getByTestId("agent-view-header")
+      const startButton = header.querySelector("button[aria-label='Start Ralph']")!
+      fireEvent.click(startButton)
+      expect(defaultProps.onStart).toHaveBeenCalled()
+    })
+
+    it("disables header Start button when disconnected", () => {
+      render(
+        <RalphRunner
+          {...defaultProps}
+          controlState="idle"
+          isViewingHistoricalSession={true}
+          connectionStatus="disconnected"
+        />,
+      )
+      const header = screen.getByTestId("agent-view-header")
+      const startButton = header.querySelector("button[aria-label='Start Ralph']")
+      expect(startButton).toBeDisabled()
+    })
+
+    it("does not show header Start button when idle but not viewing historical session", () => {
+      render(
+        <RalphRunner {...defaultProps} controlState="idle" isViewingHistoricalSession={false} />,
+      )
+      const header = screen.getByTestId("agent-view-header")
+      const startButton = header.querySelector("button[aria-label='Start Ralph']")
+      expect(startButton).not.toBeInTheDocument()
+    })
+
+    it("does not show header Start button when running and viewing historical session", () => {
+      render(
+        <RalphRunner {...defaultProps} controlState="running" isViewingHistoricalSession={true} />,
+      )
+      const header = screen.getByTestId("agent-view-header")
+      const startButton = header.querySelector("button[aria-label='Start Ralph']")
+      expect(startButton).not.toBeInTheDocument()
+    })
+  })
+
   describe("main content", () => {
     it("renders agent view with events", () => {
       render(<RalphRunner {...defaultProps} />)
