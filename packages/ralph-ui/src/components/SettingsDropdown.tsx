@@ -117,7 +117,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs",
                     "transition-colors hover:bg-muted",
-                    appearanceMode === value && "bg-accent text-accent-foreground",
+                    appearanceMode === value && "bg-muted text-foreground",
                   )}
                   data-testid={`settings-appearance-${value}`}
                 >
@@ -159,7 +159,7 @@ export function SettingsDropdown({ className, textColor }: SettingsDropdownProps
                 >
                   <span className="flex-1 truncate">{theme.label}</span>
                   {vscodeThemeId === theme.id && (
-                    <IconCheck className="size-3 text-accent-foreground" />
+                    <IconCheck className="size-3 text-popover-foreground" />
                   )}
                 </button>
               ))}

@@ -158,18 +158,21 @@ describe("ThemePicker", () => {
       expect(draculaItem).toHaveClass("bg-accent/50")
     })
 
-    it("checkmark icon uses text-accent-foreground instead of text-primary", () => {
+    it("checkmark icon uses text-popover-foreground for readability against popover bg", () => {
       render(<ThemePicker {...createDefaultProps({ activeThemeId: "dracula" })} />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("theme-picker-trigger"))
 
-      // The checkmark should use a popover-safe color, not text-primary
+      // The checkmark should use text-popover-foreground (guaranteed to contrast
+      // with the popover background), not text-accent-foreground (which derives
+      // from primary-foreground and can be white in light themes)
       const draculaItem = screen.getByTestId("theme-picker-item-dracula")
       const checkIcon = draculaItem.querySelector("svg")
       expect(checkIcon).toBeTruthy()
       const classes = checkIcon!.getAttribute("class") ?? ""
-      expect(classes).toContain("text-accent-foreground")
+      expect(classes).toContain("text-popover-foreground")
+      expect(classes).not.toContain("text-accent-foreground")
       expect(classes).not.toContain("text-primary")
     })
   })

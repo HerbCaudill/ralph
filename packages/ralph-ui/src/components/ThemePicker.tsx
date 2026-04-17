@@ -99,7 +99,7 @@ export function ThemePicker({
               >
                 <span className="flex-1 truncate">{theme.label}</span>
                 {activeThemeId === theme.id && (
-                  <IconCheck className="size-3 text-accent-foreground" />
+                  <IconCheck className="size-3 text-popover-foreground" />
                 )}
               </button>
             ))}

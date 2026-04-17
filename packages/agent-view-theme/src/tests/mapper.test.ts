@@ -278,6 +278,22 @@ describe("mapThemeToCSSVariables", () => {
     expect(vars["--primary"]).toBe("#0066b8")
   })
 
+  it("should use dark foreground defaults for light theme primary/accent/sidebar", () => {
+    const theme: VSCodeTheme = {
+      name: "Light",
+      type: "light",
+      colors: {},
+      tokenColors: [],
+    }
+
+    const vars = mapThemeToCSSVariables(theme)
+
+    // These should all be dark text, not white, so they're readable in light mode
+    expect(vars["--primary-foreground"]).toBe("#1e1e1e")
+    expect(vars["--accent-foreground"]).toBe("#1e1e1e")
+    expect(vars["--sidebar-primary-foreground"]).toBe("#1e1e1e")
+  })
+
   it("should derive colors when needed", () => {
     const theme: VSCodeTheme = {
       name: "Test",

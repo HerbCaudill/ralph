@@ -56,21 +56,37 @@ describe("SettingsDropdown", () => {
       expect(dropdown).toHaveClass("text-popover-foreground")
     })
 
-    it("checkmark icon uses text-accent-foreground instead of text-primary", () => {
+    it("checkmark icon uses text-popover-foreground for readability against popover bg", () => {
       render(<SettingsDropdown />)
 
       // Open dropdown
       fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
 
-      // Active theme should show a checkmark — it should use text-accent-foreground
-      // (which is readable against the popover), not text-primary (which is the
-      // accent color itself and could clash with the background)
+      // Active theme should show a checkmark using text-popover-foreground
+      // (guaranteed to contrast with bg-popover), not text-accent-foreground
+      // (which derives from primary-foreground and can be white in light themes)
       const activeThemeItem = screen.getByTestId("settings-theme-item-github-light")
       const checkIcon = activeThemeItem.querySelector("svg")
       expect(checkIcon).toBeTruthy()
       const classes = checkIcon!.getAttribute("class") ?? ""
-      expect(classes).toContain("text-accent-foreground")
+      expect(classes).toContain("text-popover-foreground")
+      expect(classes).not.toContain("text-accent-foreground")
       expect(classes).not.toContain("text-primary")
+    })
+
+    it("selected appearance mode uses bg-muted and text-foreground for readability", () => {
+      render(<SettingsDropdown />)
+
+      // Open dropdown
+      fireEvent.click(screen.getByTestId("settings-dropdown-trigger"))
+
+      // The selected mode button should use bg-muted/text-foreground, not
+      // bg-accent/text-accent-foreground (which can be white-on-white in light mode)
+      const lightButton = screen.getByTestId("settings-appearance-light")
+      expect(lightButton).toHaveClass("bg-muted")
+      expect(lightButton).toHaveClass("text-foreground")
+      expect(lightButton).not.toHaveClass("bg-accent")
+      expect(lightButton).not.toHaveClass("text-accent-foreground")
     })
   })
 })
