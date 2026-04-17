@@ -27,4 +27,7 @@ Before completing a task:
 1. Run `pnpm test` again to verify everything works.
 2. Use the **write-docs** agent to update CLAUDE.md or README.md with relevant changes.
 3. Run `pnpm format` to format code.
-4. Commit and push your changes. If you come across unrelated changes, probably the user or another agent is working in the codebase at the same time. Be careful just to commit the changes you made.
+4. Commit your changes.
+5. Merge your changes into main. If main has changed or the merge fails, update, resolve conflicts, rerun test, and retry.
+6. Only close the bead after the changes are present on main.
+7. Do not end the task while the work only exists in your worktree.
