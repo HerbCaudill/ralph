@@ -57,8 +57,8 @@ export class SessionPersister {
     /** Optional workspace identifier. */
     workspace?: string,
   ): Promise<Record<string, unknown>[]> {
-    const filePath = this.sessionPath(sessionId, app, workspace)
-    if (!existsSync(filePath)) return []
+    const filePath = this.resolveSessionPath(sessionId, app, workspace)
+    if (!filePath) return []
 
     const content = await readFile(filePath, "utf-8")
     return content
@@ -185,8 +185,8 @@ export class SessionPersister {
     systemPrompt?: string
     allowedTools?: string[]
   } | null {
-    const filePath = this.sessionPath(sessionId, app, workspace)
-    if (!existsSync(filePath)) return null
+    const filePath = this.resolveSessionPath(sessionId, app, workspace)
+    if (!filePath) return null
 
     try {
       const content = readFileSync(filePath, "utf-8")
@@ -219,7 +219,7 @@ export class SessionPersister {
     /** Optional workspace identifier. */
     workspace?: string,
   ): boolean {
-    return existsSync(this.sessionPath(sessionId, app, workspace))
+    return this.resolveSessionPath(sessionId, app, workspace) !== null
   }
 
   /** Get the full file path for a session. */
@@ -231,7 +231,10 @@ export class SessionPersister {
     /** Optional workspace identifier. */
     workspace?: string,
   ): string {
-    return this.sessionPath(sessionId, app, workspace)
+    return (
+      this.resolveSessionPath(sessionId, app, workspace) ??
+      this.sessionPath(sessionId, app, workspace)
+    )
   }
 
   /** Get the directory for a given workspace + app combination. */
@@ -392,6 +395,21 @@ export class SessionPersister {
     }
 
     return sessions
+  }
+
+  /** Resolve a session path, falling back to legacy storage layouts when needed. */
+  private resolveSessionPath(sessionId: string, app?: string, workspace?: string): string | null {
+    const exactPath = this.sessionPath(sessionId, app, workspace)
+    if (existsSync(exactPath)) {
+      return exactPath
+    }
+
+    const fallbackPath = this.findSessionPath(sessionId)
+    if (fallbackPath && existsSync(fallbackPath)) {
+      return fallbackPath
+    }
+
+    return null
   }
 
   /** Find the session path by searching all known locations. */

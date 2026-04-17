@@ -478,12 +478,13 @@ describe("App-namespaced session storage", () => {
       expect(sessionInfo).not.toBeNull()
       expect(sessionInfo.app).toBe("ralph")
 
-      // The bug was: reconnect handler called readEvents(sessionId) without app
-      // This would return empty array because the file is in ralph/ subdirectory
+      // Legacy callers may omit app/workspace; the persister should still find the session.
       const eventsWithoutApp = await persister.readEvents(sessionId)
-      expect(eventsWithoutApp).toHaveLength(0) // Bug: events not found!
+      expect(eventsWithoutApp.length).toBeGreaterThanOrEqual(2)
+      expect(eventsWithoutApp.some(e => e.type === "user_message")).toBe(true)
+      expect(eventsWithoutApp.some(e => e.type === "assistant_message")).toBe(true)
 
-      // The fix: pass the app and workspace parameters from session info
+      // Explicit app/workspace lookups should continue to work too.
       const eventsWithApp = await persister.readEvents(
         sessionId,
         sessionInfo.app,

@@ -13,6 +13,28 @@ describe("SessionPersister", () => {
     persister = new SessionPersister(storageDir)
   })
 
+  describe("readEvents", () => {
+    it("falls back to legacy app-only storage when workspace-scoped path is missing", async () => {
+      const sessionId = "legacy-app-only"
+      const events = [
+        { type: "session_created", sessionId, app: "ralph", timestamp: 1000 },
+        {
+          type: "assistant",
+          message: { content: [{ type: "text", text: "<start_task>r-abc123</start_task>" }] },
+          timestamp: 2000,
+        },
+      ]
+
+      for (const event of events) {
+        await persister.appendEvent(sessionId, event, "ralph")
+      }
+
+      await expect(persister.readEvents(sessionId, "ralph", "herbcaudill/ralph")).resolves.toEqual(
+        events,
+      )
+    })
+  })
+
   describe("readSessionMetadata", () => {
     it("returns correct metadata from a session_created event", async () => {
       const sessionId = "test-session-1"
@@ -106,6 +128,27 @@ describe("SessionPersister", () => {
 
       const metadata = persister.readSessionMetadata(sessionId)
       expect(metadata).toBeNull()
+    })
+
+    it("falls back to legacy app-only storage when workspace-scoped path is missing", async () => {
+      const sessionId = "legacy-app-only-metadata"
+      await persister.appendEvent(
+        sessionId,
+        {
+          type: "session_created",
+          sessionId,
+          adapter: "claude",
+          cwd: "/Users/herbcaudill/Code/HerbCaudill/ralph",
+          timestamp: 1700000000000,
+        },
+        "ralph",
+      )
+
+      const metadata = persister.readSessionMetadata(sessionId, "ralph", "herbcaudill/ralph")
+
+      expect(metadata).not.toBeNull()
+      expect(metadata?.adapter).toBe("claude")
+      expect(metadata?.cwd).toBe("/Users/herbcaudill/Code/HerbCaudill/ralph")
     })
   })
 })
