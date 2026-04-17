@@ -57,8 +57,8 @@ export function RalphRunner({
   /** Display name for the worker (e.g., "Homer", "Ralph"). */
   const workerDisplayName = workerName ? capitalize(workerName) : null
 
-  /** Whether to show a Start button in the header (idle + viewing a historical session). */
-  const showHeaderStartButton = showIdleState && isViewingHistoricalSession
+  /** Whether to show a Start button in the header while Ralph is idle. */
+  const showHeaderStartButton = showIdleState
 
   // Header with robot icon, worker name, session picker (includes task info), and optional start button
   const header = (

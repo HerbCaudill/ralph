@@ -263,13 +263,13 @@ describe("RalphRunner", () => {
       expect(screen.getByText("Click Start to begin working on open tasks")).toBeInTheDocument()
     })
 
-    it("shows idle state with start button when idle and no events", () => {
+    it("shows idle state with start buttons when idle and no events", () => {
       render(<RalphRunner {...defaultProps} events={[]} controlState="idle" />)
-      const startButton = screen.getByRole("button", { name: /start ralph/i })
-      expect(startButton).toBeInTheDocument()
+      const startButtons = screen.getAllByRole("button", { name: /start ralph/i })
+      expect(startButtons).toHaveLength(2)
     })
 
-    it("calls onStart when start button in idle state is clicked", () => {
+    it("calls onStart when a start button in idle state is clicked", () => {
       render(
         <RalphRunner
           {...defaultProps}
@@ -278,12 +278,12 @@ describe("RalphRunner", () => {
           connectionStatus="connected"
         />,
       )
-      const startButton = screen.getByRole("button", { name: /start ralph/i })
+      const [startButton] = screen.getAllByRole("button", { name: /start ralph/i })
       fireEvent.click(startButton)
       expect(defaultProps.onStart).toHaveBeenCalled()
     })
 
-    it("disables start button in idle state when disconnected", () => {
+    it("disables start buttons in idle state when disconnected", () => {
       render(
         <RalphRunner
           {...defaultProps}
@@ -292,11 +292,14 @@ describe("RalphRunner", () => {
           connectionStatus="disconnected"
         />,
       )
-      const startButton = screen.getByRole("button", { name: /start ralph/i })
-      expect(startButton).toBeDisabled()
+      const startButtons = screen.getAllByRole("button", { name: /start ralph/i })
+      expect(startButtons).toHaveLength(2)
+      startButtons.forEach(startButton => {
+        expect(startButton).toBeDisabled()
+      })
     })
 
-    it("uses accent styling for the start button", () => {
+    it("uses accent styling for the header start button", () => {
       render(
         <RalphRunner
           {...defaultProps}
@@ -305,19 +308,21 @@ describe("RalphRunner", () => {
           connectionStatus="connected"
         />,
       )
-      const startButton = screen.getByRole("button", { name: /start ralph/i })
+      const [startButton] = screen.getAllByRole("button", { name: /start ralph/i })
       expect(startButton).toHaveClass("bg-accent", "hover:bg-accent/90")
       expect(startButton).not.toHaveClass("bg-green-600", "hover:bg-green-700")
     })
 
     it("does not show idle state when running", () => {
       render(<RalphRunner {...defaultProps} events={[]} controlState="running" />)
+      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
       expect(screen.queryByRole("button", { name: /start ralph/i })).not.toBeInTheDocument()
     })
 
-    it("does not show idle state when there are events", () => {
+    it("does not show idle empty state when there are events", () => {
       render(<RalphRunner {...defaultProps} controlState="idle" />)
-      expect(screen.queryByRole("button", { name: /start ralph/i })).not.toBeInTheDocument()
+      expect(screen.queryByText("Ralph is not running")).not.toBeInTheDocument()
+      expect(screen.getByRole("button", { name: /start ralph/i })).toBeInTheDocument()
     })
   })
 
@@ -360,13 +365,13 @@ describe("RalphRunner", () => {
       expect(startButton).toBeDisabled()
     })
 
-    it("does not show header Start button when idle but not viewing historical session", () => {
+    it("shows header Start button when idle even if not viewing historical session", () => {
       render(
         <RalphRunner {...defaultProps} controlState="idle" isViewingHistoricalSession={false} />,
       )
       const header = screen.getByTestId("agent-view-header")
       const startButton = header.querySelector("button[aria-label='Start Ralph']")
-      expect(startButton).not.toBeInTheDocument()
+      expect(startButton).toBeInTheDocument()
     })
 
     it("does not show header Start button when running and viewing historical session", () => {
