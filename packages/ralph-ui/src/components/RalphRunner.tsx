@@ -57,6 +57,9 @@ export function RalphRunner({
   /** Display name for the worker (e.g., "Homer", "Ralph"). */
   const workerDisplayName = workerName ? capitalize(workerName) : null
 
+  /** Whether to show a start button in the header (idle + viewing history). */
+  const showHeaderStartButton = showIdleState && isViewingHistoricalSession
+
   // Header with robot icon, worker name, session picker (includes task info), and history badge
   const header = (
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -73,6 +76,17 @@ export function RalphRunner({
           onSelectSession={onSelectSession ?? (() => {})}
         />
       </div>
+      {showHeaderStartButton && (
+        <button
+          onClick={onStart}
+          disabled={!isConnected}
+          aria-label="Start Ralph"
+          className="flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <IconPlayerPlayFilled size={14} />
+          Start
+        </button>
+      )}
     </div>
   )
 
