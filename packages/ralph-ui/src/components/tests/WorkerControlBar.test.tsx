@@ -34,7 +34,12 @@ vi.mock("@herbcaudill/components", () => ({
 
 describe("WorkerControlBar", () => {
   const mockWorkers: WorkerInfo[] = [
-    { workerName: "homer", state: "running", currentWorkId: "bd-abc123" },
+    {
+      workerName: "homer",
+      state: "running",
+      currentWorkId: "bd-abc123",
+      sessionId: "session-homer-123",
+    },
     { workerName: "marge", state: "paused", currentWorkId: "bd-def456" },
   ]
 
@@ -45,6 +50,7 @@ describe("WorkerControlBar", () => {
     onPauseWorker: vi.fn(),
     onResumeWorker: vi.fn(),
     onStopWorker: vi.fn(),
+    onViewSession: vi.fn(),
     onStopAfterCurrent: vi.fn(),
     onCancelStopAfterCurrent: vi.fn(),
   }
@@ -145,6 +151,29 @@ describe("WorkerControlBar", () => {
       fireEvent.click(screen.getByRole("button", { name: "Stop homer" }))
 
       expect(onStopWorker).toHaveBeenCalledWith("homer")
+    })
+
+    it("shows a view session button when a worker session is available", () => {
+      render(<WorkerControlBar {...defaultProps} />)
+
+      expect(screen.getByRole("button", { name: "View session for homer" })).toBeInTheDocument()
+    })
+
+    it("does not show a view session button when a worker has no session", () => {
+      render(<WorkerControlBar {...defaultProps} />)
+
+      expect(
+        screen.queryByRole("button", { name: "View session for marge" }),
+      ).not.toBeInTheDocument()
+    })
+
+    it("calls onViewSession when view session is clicked", () => {
+      const onViewSession = vi.fn()
+      render(<WorkerControlBar {...defaultProps} onViewSession={onViewSession} />)
+
+      fireEvent.click(screen.getByRole("button", { name: "View session for homer" }))
+
+      expect(onViewSession).toHaveBeenCalledWith("session-homer-123")
     })
   })
 

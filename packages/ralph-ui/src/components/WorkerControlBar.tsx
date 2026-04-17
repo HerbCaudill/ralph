@@ -19,6 +19,7 @@ export interface WorkerInfo {
   workerName: string
   state: WorkerState
   currentWorkId: string | null
+  sessionId?: string
 }
 
 /**
@@ -41,6 +42,8 @@ export interface WorkerControlBarProps {
   onStopAfterCurrent?: () => void
   /** Called when cancel-stop-after-current button is clicked (global). */
   onCancelStopAfterCurrent?: () => void
+  /** Called when the user wants to open a worker's session. */
+  onViewSession?: (sessionId: string) => void
   /** Optional CSS class to apply to the container. */
   className?: string
 }
@@ -58,6 +61,7 @@ export function WorkerControlBar({
   onStopWorker,
   onStopAfterCurrent,
   onCancelStopAfterCurrent,
+  onViewSession,
   className,
 }: WorkerControlBarProps) {
   const handleStopAfterCurrent = useCallback(() => {
@@ -100,6 +104,7 @@ export function WorkerControlBar({
             onPause={() => onPauseWorker?.(worker.workerName)}
             onResume={() => onResumeWorker?.(worker.workerName)}
             onStop={() => onStopWorker?.(worker.workerName)}
+            onViewSession={worker.sessionId ? () => onViewSession?.(worker.sessionId!) : undefined}
           />
         ))}
       </div>
@@ -116,12 +121,20 @@ interface WorkerRowProps {
   onPause: () => void
   onResume: () => void
   onStop: () => void
+  onViewSession?: () => void
 }
 
 /**
  * A single row showing worker name, task, and control buttons.
  */
-function WorkerRow({ worker, isConnected, onPause, onResume, onStop }: WorkerRowProps) {
+function WorkerRow({
+  worker,
+  isConnected,
+  onPause,
+  onResume,
+  onStop,
+  onViewSession,
+}: WorkerRowProps) {
   const isRunning = worker.state === "running"
   const isPaused = worker.state === "paused"
   const canPause = isRunning && isConnected
@@ -164,6 +177,18 @@ function WorkerRow({ worker, isConnected, onPause, onResume, onStop }: WorkerRow
             <IconPlayerPlayFilled size={12} stroke={1.5} />
           : <IconPlayerPauseFilled size={12} stroke={1.5} />}
         </Button>
+
+        {worker.sessionId && onViewSession && (
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={onViewSession}
+            disabled={!isConnected}
+            aria-label={`View session for ${worker.workerName}`}
+          >
+            View session
+          </Button>
+        )}
 
         {/* Stop button */}
         <Button

@@ -17,6 +17,7 @@ export interface WorkerInfo {
   workerName: string
   state: WorkerState
   currentWorkId: string | null
+  sessionId?: string
 }
 
 /**
@@ -261,6 +262,17 @@ export function useWorkerOrchestrator(
         case "session_created": {
           const sessionId = data.sessionId as string
           const workerName = data.workerName as string
+
+          setWorkers(prev => {
+            if (!prev[workerName]) return prev
+            return {
+              ...prev,
+              [workerName]: {
+                ...prev[workerName],
+                sessionId,
+              },
+            }
+          })
 
           // Track this session as active
           setActiveSessionIds(prev => {

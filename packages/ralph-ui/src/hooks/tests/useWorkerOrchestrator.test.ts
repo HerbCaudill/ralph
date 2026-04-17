@@ -808,6 +808,38 @@ describe("useWorkerOrchestrator", () => {
       })
     })
 
+    it("should attach the session ID to the matching worker when a session is created", async () => {
+      const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
+      const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
+
+      await waitFor(() => {
+        expect(MockWebSocket.instances.length).toBe(1)
+      })
+
+      const ws = MockWebSocket.instances[0]
+
+      act(() => {
+        ws.simulateMessage({
+          type: "worker_started",
+          workerName: "Ralph",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      act(() => {
+        ws.simulateMessage({
+          type: "session_created",
+          workerName: "Ralph",
+          sessionId: "session-abc123",
+          workspaceId: TEST_WORKSPACE_ID,
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.workers["Ralph"]?.sessionId).toBe("session-abc123")
+      })
+    })
+
     it("should return the most recently created session ID", async () => {
       const { useWorkerOrchestrator } = await import("../useWorkerOrchestrator")
       const { result } = renderHook(() => useWorkerOrchestrator(TEST_WORKSPACE_ID))
