@@ -364,7 +364,7 @@ export function useTaskDetails(
         const response = await apiFetch(`/api/tasks/${task.id}/comments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ comment }),
+          body: JSON.stringify({ comment, author: "User" }),
         })
 
         const data = (await response.json()) as { ok: boolean; error?: string }

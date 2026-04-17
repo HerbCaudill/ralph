@@ -722,5 +722,46 @@ describe("useTaskDetails", () => {
         updatedComments,
       )
     })
+
+    it("includes author 'User' in the POST body when adding a comment", async () => {
+      vi.useRealTimers()
+      configureApiClient({ workspacePath: "workspace/a" })
+
+      mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+        if (url.includes("/labels")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, labels: [] }),
+          })
+        }
+        if (url.includes("/comments") && init?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true }),
+          })
+        }
+        if (url.includes("/comments")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ok: true, comments: [] }),
+          })
+        }
+        throw new Error(`Unexpected URL: ${url}`)
+      })
+
+      const { result } = renderHook(() => useTaskDetails(defaultOptions))
+
+      await act(async () => {
+        await result.current.handleAddComment("my comment")
+      })
+
+      const postCall = mockFetch.mock.calls.find(
+        ([url, init]: [string, RequestInit?]) =>
+          url.includes("/comments") && init?.method === "POST",
+      )
+      expect(postCall).toBeDefined()
+      const body = JSON.parse(postCall![1].body as string)
+      expect(body).toEqual({ comment: "my comment", author: "User" })
+    })
   })
 })
