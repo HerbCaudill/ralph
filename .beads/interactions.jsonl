@@ -1,0 +1,3 @@
+{"id":"int-daffdc57","kind":"field_change","created_at":"2026-04-17T12:06:18.5691Z","actor":"Test User","issue_id":"r-a6x","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-f9285cc2","kind":"field_change","created_at":"2026-04-17T12:06:18.571734Z","actor":"Test User","issue_id":"r-a6x","extra":{"field":"assignee","new_value":"marge","old_value":""}}
+{"id":"int-9b82e85f","kind":"field_change","created_at":"2026-04-17T12:10:04.156599Z","actor":"Test User","issue_id":"r-a6x","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Closed"}}
