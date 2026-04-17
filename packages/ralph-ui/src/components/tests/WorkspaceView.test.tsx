@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { WorkspaceView } from "../WorkspaceView"
 import type { ChatEvent } from "@herbcaudill/agent-view"
@@ -500,6 +500,25 @@ describe("WorkspaceView session history wiring", () => {
     })
   })
 
+  describe("start behavior", () => {
+    it("returns to the live session when starting from a historical session", () => {
+      mockIsViewingHistorical = true
+      mockHistoricalEvents = [{ type: "assistant", timestamp: 500 } as ChatEvent]
+      mockUrlSessionId = "old-session-2"
+
+      renderWorkspaceView()
+
+      const onStart = capturedRalphRunnerProps.onStart as (() => void) | undefined
+      expect(onStart).toBeDefined()
+
+      onStart?.()
+
+      expect(mockClearHistorical).toHaveBeenCalledTimes(1)
+      expect(mockNavigate).toHaveBeenCalledWith("/test/workspace", { replace: true })
+      expect(mockOrchestratorStart).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe("task chat new session", () => {
     it("starts a new task chat session and focuses the task chat input", () => {
       renderWorkspaceView()
@@ -655,6 +674,23 @@ describe("WorkspaceView worker orchestrator integration", () => {
       expect(mockRefetchSessions).toHaveBeenCalled()
       expect(mockSelectSession).not.toHaveBeenCalled()
       expect(mockNavigate).not.toHaveBeenCalled()
+    })
+
+    it("refetches sessions when the orchestrator is already running on mount", async () => {
+      mockOrchestratorState = "running"
+      mockOrchestratorWorkers = {
+        homer: {
+          workerName: "homer",
+          state: "running",
+          currentWorkId: "work-123",
+        },
+      }
+
+      renderWorkspaceView()
+
+      await waitFor(() => {
+        expect(mockRefetchSessions).toHaveBeenCalledTimes(1)
+      })
     })
   })
 })

@@ -331,12 +331,25 @@ export function WorkspaceView() {
     taskChatInputRef.current?.focus()
   }, [taskChatActions])
 
+  /** Return from a historical session route to the live Ralph view. */
+  const showLiveRalphSession = useCallback(() => {
+    if (!isViewingHistorical) {
+      return
+    }
+
+    clearHistorical()
+    if (workspaceId) {
+      navigate(`/${workspaceId}`, { replace: true })
+    }
+  }, [clearHistorical, isViewingHistorical, navigate, workspaceId])
+
   // Start Ralph hotkey handler - now uses orchestrator
   const handleStartRalph = useCallback(() => {
     if (orchestrator.state === "stopped" && orchestrator.isConnected) {
+      showLiveRalphSession()
       orchestrator.start()
     }
-  }, [orchestrator])
+  }, [orchestrator, showLiveRalphSession])
 
   // Workspace navigation hotkey handlers
   const handlePreviousWorkspace = useCallback(() => {
@@ -398,9 +411,10 @@ export function WorkspaceView() {
 
   // Handle new session - stop and restart the orchestrator
   const handleNewSession = useCallback(() => {
+    showLiveRalphSession()
     orchestrator.stop()
     setTimeout(() => orchestrator.start(), 100)
-  }, [orchestrator])
+  }, [orchestrator, showLiveRalphSession])
 
   // Handle task chat message send
   const handleTaskChatSend = useCallback(
@@ -434,8 +448,9 @@ export function WorkspaceView() {
 
   // Command palette handlers - now uses orchestrator
   const handleAgentStart = useCallback(() => {
+    showLiveRalphSession()
     orchestrator.start()
-  }, [orchestrator])
+  }, [orchestrator, showLiveRalphSession])
 
   // Pause handler for command palette - stops orchestrator
   const handleAgentPause = useCallback(() => {
@@ -445,6 +460,15 @@ export function WorkspaceView() {
   const handleCycleTheme = useCallback(() => {
     console.log("Cycle theme")
   }, [])
+
+  /** Refresh the session list when the orchestrator already has active work. */
+  useEffect(() => {
+    if (orchestrator.state !== "running" || orchestrator.activeWorkerCount === 0) {
+      return
+    }
+
+    void refetchSessions()
+  }, [orchestrator.activeWorkerCount, orchestrator.state, refetchSessions])
 
   // Left sidebar: always show TaskChatPanel
   const sidebar = (
@@ -486,7 +510,7 @@ export function WorkspaceView() {
       }}
       onSendMessage={handleRalphSend}
       onSelectSession={handleSelectSession}
-      onStart={orchestrator.start}
+      onStart={handleAgentStart}
       onResume={resume}
       onPause={pause}
       onStopAfterCurrent={orchestrator.stopAfterCurrent}
