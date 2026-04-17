@@ -370,5 +370,34 @@ describe("WorkerOrchestratorManager", () => {
         workspace: "acme/widgets",
       })
     })
+
+    it("returns noWorkFound when the session ends with a COMPLETE marker", async () => {
+      const { mockManager, sendMessage, persister } = createMockSessionManager()
+
+      sendMessage.mockImplementationOnce(async (sessionId, _message, _options) => {
+        await persister.appendEvent(
+          sessionId,
+          {
+            type: "assistant",
+            message: {
+              content: [{ type: "text", text: "<promise>COMPLETE</promise>" }],
+            },
+            timestamp: Date.now(),
+          },
+          "ralph",
+          "acme/widgets",
+        )
+      })
+
+      const manager = new WorkerOrchestratorManager({
+        mainWorkspacePath: "/tmp/acme/widgets",
+        taskSource: mockTaskSource,
+        sessionManager: mockManager,
+      })
+
+      const result = await (manager as any).runAgentSession("/tmp/.widgets-worktrees/homer/r-123")
+
+      expect(result.noWorkFound).toBe(true)
+    })
   })
 })

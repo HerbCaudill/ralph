@@ -25,6 +25,7 @@ export interface MergeConflictContext {
 export interface RunAgentResult {
   exitCode: number
   sessionId: string
+  noWorkFound?: boolean
 }
 
 /**
@@ -235,6 +236,14 @@ export class WorkerLoop extends EventEmitter {
       if (result.exitCode !== 0) {
         this.emit("error", new Error(`Agent exited with code ${result.exitCode}`))
         // Continue to try merge anyway - agent may have made useful changes
+      }
+
+      if (result.noWorkFound) {
+        await this.worktreeManager.remove(this.workerName, workId)
+        this.emit("idle")
+        this.stopped = true
+        success = true
+        continue
       }
 
       // Attempt to merge
