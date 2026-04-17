@@ -116,7 +116,17 @@ export function WorkspaceView() {
   const { state: taskChatState, actions: taskChatActions } = useTaskChat(workspaceId)
 
   // Task chat session history from server
-  const { sessions: taskChatSessions } = useTaskChatSessions(taskChatState.sessionId, workspaceId)
+  const { sessions: taskChatSessions, refetchSessions: refetchTaskChatSessions } =
+    useTaskChatSessions(taskChatState.sessionId, workspaceId)
+
+  // Refetch task chat sessions when streaming ends so isActive flags update
+  const prevTaskChatStreamingRef = useRef(false)
+  useEffect(() => {
+    if (prevTaskChatStreamingRef.current && !taskChatState.isStreaming) {
+      refetchTaskChatSessions()
+    }
+    prevTaskChatStreamingRef.current = taskChatState.isStreaming
+  }, [taskChatState.isStreaming, refetchTaskChatSessions])
 
   const clearTasks = useBeadsViewStore(state => state.clearTasks)
 
