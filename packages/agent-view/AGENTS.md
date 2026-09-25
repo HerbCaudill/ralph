@@ -1,6 +1,6 @@
 # Agent-view
 
-UI components for rendering agent event streams. See the monorepo root `CLAUDE.md` for project-wide instructions.
+UI components for rendering agent event streams. See the monorepo root `AGENTS.md` for project-wide instructions.
 
 ## Development commands
 

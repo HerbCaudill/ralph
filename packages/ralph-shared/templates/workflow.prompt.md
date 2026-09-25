@@ -41,5 +41,5 @@ Before completing a task:
 1. Use the **run-tests** agent to verify everything works, this time with `pnpm test --changed`.
 2. Run `pnpm format` to format code
 3. Use the **make-tests** agent to add tests where applicable
-4. Use the **write-docs** agent to update CLAUDE.md or README.md with relevant changes
+4. Use the **write-docs** agent to update AGENTS.md or README.md with relevant changes
 5. Commit and push your changes (only files you modified)

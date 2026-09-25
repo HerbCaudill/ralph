@@ -7,7 +7,7 @@ export const CLAUDE_MD_FILENAME = "CLAUDE.md"
 
 /** Options for loading CLAUDE.md files. */
 export interface LoadClaudeMdOptions {
-  /** Working directory to search for workspace CLAUDE.md. Defaults to process.cwd(). */
+  /** Working directory to search for workspace AGENTS.md. Defaults to process.cwd(). */
   cwd?: string
 }
 
@@ -16,7 +16,7 @@ export interface LoadClaudeMdOptions {
  *
  * Checks two locations in order:
  * 1. User global: ~/.claude/CLAUDE.md
- * 2. Workspace: {cwd}/CLAUDE.md
+ * 2. Workspace: {cwd}/AGENTS.md
  *
  * If both exist, their contents are combined with the global config first,
  * followed by workspace config (separated by a blank line).
@@ -34,8 +34,8 @@ export function loadClaudeMdSync(options: LoadClaudeMdOptions = {}): string | nu
     contents.push(globalContent)
   }
 
-  // 2. Workspace: {cwd}/CLAUDE.md
-  const workspacePath = join(cwd, CLAUDE_MD_FILENAME)
+  // 2. Workspace: {cwd}/AGENTS.md
+  const workspacePath = join(cwd, "AGENTS.md")
   const workspaceContent = readFileSafe(workspacePath)
   if (workspaceContent) {
     contents.push(workspaceContent)

@@ -52,14 +52,14 @@ describe("loadContextFile", () => {
   })
 
   describe("loadContextFileSync", () => {
-    it("loads CLAUDE.md for claude adapter", () => {
+    it("loads AGENTS.md for claude adapter", () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/project/CLAUDE.md"
+        return p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
-        if (p === "/project/CLAUDE.md") return "# Claude Config"
+        if (p === "/project/AGENTS.md") return "# Claude Config"
         throw new Error(`File not found: ${p}`)
       })
 
@@ -92,12 +92,12 @@ describe("loadContextFile", () => {
     it("combines global and workspace context files for claude", () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/home/testuser/.claude/CLAUDE.md" || p === "/project/CLAUDE.md"
+        return p === "/home/testuser/.claude/CLAUDE.md" || p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
         if (p === "/home/testuser/.claude/CLAUDE.md") return "# Global Config"
-        if (p === "/project/CLAUDE.md") return "# Workspace Config"
+        if (p === "/project/AGENTS.md") return "# Workspace Config"
         throw new Error(`File not found: ${p}`)
       })
 
@@ -128,17 +128,17 @@ describe("loadContextFile", () => {
       loadContextFileSync({ adapter: "claude" })
 
       // Should check for workspace context file at process.cwd()
-      expect(mockExistsSync).toHaveBeenCalledWith(`${originalCwd}/CLAUDE.md`)
+      expect(mockExistsSync).toHaveBeenCalledWith(`${originalCwd}/AGENTS.md`)
     })
 
     it("trims whitespace from content", () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/project/CLAUDE.md"
+        return p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
-        if (p === "/project/CLAUDE.md") return "  \n# Config\n  "
+        if (p === "/project/AGENTS.md") return "  \n# Config\n  "
         throw new Error(`File not found: ${p}`)
       })
 
