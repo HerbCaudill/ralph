@@ -15,7 +15,7 @@ const ADAPTER_CONFIG: Record<string, { filename: string; globalDir: string }> = 
 const DEFAULT_CONFIG = ADAPTER_CONFIG.claude
 
 /**
- * Get the context filename for a given adapter.
+ * Get the global context filename for a given adapter.
  *
  * @param adapter - The adapter type (e.g., "claude", "codex")
  * @returns The filename to look for (e.g., "CLAUDE.md", "AGENTS.md")
@@ -47,7 +47,7 @@ export interface LoadContextFileOptions {
  *
  * Checks two locations in order:
  * 1. User global: ~/{globalDir}/{filename} (e.g., ~/.claude/CLAUDE.md)
- * 2. Workspace: {cwd}/{filename} (e.g., /project/CLAUDE.md)
+ * 2. Workspace: {cwd}/AGENTS.md (e.g., /project/AGENTS.md)
  *
  * If both exist, their contents are combined with the global config first,
  * followed by workspace config (separated by a blank line).
@@ -68,8 +68,8 @@ export function loadContextFileSync(options: LoadContextFileOptions = {}): strin
     contents.push(globalContent)
   }
 
-  // 2. Workspace: {cwd}/{filename}
-  const workspacePath = join(cwd, filename)
+  // 2. Workspace: {cwd}/AGENTS.md
+  const workspacePath = join(cwd, "AGENTS.md")
   const workspaceContent = readFileSafe(workspacePath)
   if (workspaceContent) {
     contents.push(workspaceContent)

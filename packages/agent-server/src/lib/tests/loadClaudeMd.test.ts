@@ -47,14 +47,14 @@ describe("loadClaudeMd", () => {
       expect(result).toBeNull()
     })
 
-    it("returns workspace CLAUDE.md content when only workspace file exists", () => {
+    it("returns workspace AGENTS.md content when only workspace file exists", () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/project/CLAUDE.md"
+        return p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
-        if (p === "/project/CLAUDE.md") return "# Workspace Config"
+        if (p === "/project/AGENTS.md") return "# Workspace Config"
         throw new Error(`File not found: ${p}`)
       })
 
@@ -80,12 +80,12 @@ describe("loadClaudeMd", () => {
     it("returns combined content (global then workspace) when both files exist", () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/home/testuser/.claude/CLAUDE.md" || p === "/project/CLAUDE.md"
+        return p === "/home/testuser/.claude/CLAUDE.md" || p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
         if (p === "/home/testuser/.claude/CLAUDE.md") return "# Global Config"
-        if (p === "/project/CLAUDE.md") return "# Workspace Config"
+        if (p === "/project/AGENTS.md") return "# Workspace Config"
         throw new Error(`File not found: ${p}`)
       })
 
@@ -100,8 +100,8 @@ describe("loadClaudeMd", () => {
 
       loadClaudeMdSync()
 
-      // Should check for workspace CLAUDE.md at process.cwd()
-      expect(mockExistsSync).toHaveBeenCalledWith(path.join(originalCwd, "CLAUDE.md"))
+      // Should check for workspace AGENTS.md at process.cwd()
+      expect(mockExistsSync).toHaveBeenCalledWith(path.join(originalCwd, "AGENTS.md"))
     })
 
     it("handles file read errors gracefully by returning null for that file", () => {
@@ -117,11 +117,11 @@ describe("loadClaudeMd", () => {
     it("trims whitespace from content", () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/project/CLAUDE.md"
+        return p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
-        if (p === "/project/CLAUDE.md") return "  \n# Config\n  "
+        if (p === "/project/AGENTS.md") return "  \n# Config\n  "
         throw new Error(`File not found: ${p}`)
       })
 
@@ -149,12 +149,12 @@ describe("loadClaudeMd", () => {
     it("returns combined content when both files exist", async () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const p = String(filePath)
-        return p === "/home/testuser/.claude/CLAUDE.md" || p === "/project/CLAUDE.md"
+        return p === "/home/testuser/.claude/CLAUDE.md" || p === "/project/AGENTS.md"
       })
       mockReadFileSync.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
         const p = String(filePath)
         if (p === "/home/testuser/.claude/CLAUDE.md") return "# Global"
-        if (p === "/project/CLAUDE.md") return "# Workspace"
+        if (p === "/project/AGENTS.md") return "# Workspace"
         throw new Error(`File not found: ${p}`)
       })
 
