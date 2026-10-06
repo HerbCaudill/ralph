@@ -225,7 +225,10 @@ export async function findAvailablePort(
   /** The port to start searching from */
   startPort,
 ) {
-  return getPort({ port: portNumbers(startPort, startPort + MAX_PORT_ATTEMPTS - 1) })
+  return getPort({
+    port: portNumbers(startPort, startPort + MAX_PORT_ATTEMPTS - 1),
+    exclude: process.env.PORTLESS_URL ? [Number(process.env.PORT)] : [],
+  })
 }
 
 /**
@@ -354,7 +357,11 @@ export async function runDev(
     }
   }
   if (frontend) {
-    ports._frontend = await resolvePort(frontend.portEnv, frontend.defaultPort, "frontend")
+    ports._frontend = await resolvePort(
+      process.env.PORTLESS_URL ? "PORT" : frontend.portEnv,
+      frontend.defaultPort,
+      "frontend",
+    )
   }
 
   // Build env with resolved ports
@@ -385,7 +392,9 @@ export async function runDev(
       console.log(`   ✔︎ ${svc.name} http://localhost:${ports[svc.name]}`)
     }
     if (frontend) {
-      console.log(`   ✔︎ frontend http://localhost:${ports._frontend}`)
+      console.log(
+        `   ✔︎ frontend ${process.env.PORTLESS_URL ?? `http://localhost:${ports._frontend}`}`,
+      )
     }
   }
 
@@ -427,7 +436,7 @@ export async function runDev(
   // Start frontend
   if (frontend) {
     const uiArgs = ["--filter", frontend.package, "exec", "vite", "--port", String(ports._frontend)]
-    if (frontend.open && !process.env.RALPH_NO_OPEN) {
+    if (frontend.open && !process.env.RALPH_NO_OPEN && !process.env.PORTLESS_URL) {
       uiArgs.push("--open")
     }
     if (frontend.extraArgs) {

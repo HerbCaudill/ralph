@@ -8,9 +8,9 @@
     "build": "pnpm -r build",
     "cli": "tsx packages/ralph-cli/src/index.ts",
     "build:cli": "pnpm --filter ralph build",
-    "demo:agent": "node scripts/agent-demo.js",
-    "demo:beads": "node scripts/beads-demo.js",
-    "dev": "node scripts/dev.js",
+    "demo:agent": "localhost-dev --service agent-demo pnpm demo:agent:app",
+    "demo:beads": "localhost-dev --service beads-demo pnpm demo:beads:app",
+    "dev": "localhost-dev pnpm dev:app",
     "format": "git diff --name-only HEAD --diff-filter=ACMR | xargs -r prettier --write --ignore-unknown --log-level silent",
     "postinstall": "pnpm --filter ralph-shared build",
     "pub": "pnpm --filter ralph publish && pnpm --filter ralph-ui publish",
@@ -41,7 +41,11 @@
     "ui": "pnpm --filter ralph-ui dev",
     "version-major": "pnpm version major --no-git-tag-version && pnpm -r exec pnpm version major --no-git-tag-version",
     "version-minor": "pnpm version minor --no-git-tag-version && pnpm -r exec pnpm version minor --no-git-tag-version",
-    "version-patch": "pnpm version patch --no-git-tag-version && pnpm -r exec pnpm version patch --no-git-tag-version"
+    "version-patch": "pnpm version patch --no-git-tag-version && pnpm -r exec pnpm version patch --no-git-tag-version",
+    "dev:app": "node scripts/dev.js",
+    "dev:url": "localhost-dev url",
+    "demo:agent:app": "node scripts/agent-demo.js",
+    "demo:beads:app": "node scripts/beads-demo.js"
   },
   "devDependencies": {
     "get-port": "^7.1.0",

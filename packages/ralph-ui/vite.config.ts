@@ -7,7 +7,25 @@ const beadsPort = process.env.BEADS_PORT ?? "4243"
 const agentPort = process.env.AGENT_SERVER_PORT ?? "4244"
 const uiPort = parseInt(process.env.RALPH_UI_PORT ?? "5179", 10)
 
+/** Route the assigned loopback port and hot reload through the shared HTTPS proxy. */
+const localhostServer = process.env.PORTLESS_URL
+  ? {
+      port: Number(process.env.PORT),
+      host: "127.0.0.1",
+      strictPort: true,
+      allowedHosts: [new URL(process.env.PORTLESS_URL).hostname],
+      hmr: {
+        protocol: "wss" as const,
+        host: new URL(process.env.PORTLESS_URL).hostname,
+        clientPort: 443,
+      },
+    }
+  : {}
+
 export default defineConfig({
+  ...(process.env.PORTLESS_URL
+    ? { cacheDir: `node_modules/.cache/localhost-dev/${process.env.PORT}` }
+    : {}),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -44,5 +62,7 @@ export default defineConfig({
         ws: true,
       },
     },
+
+    ...localhostServer,
   },
 })
